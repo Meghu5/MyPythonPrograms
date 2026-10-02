@@ -1,0 +1,42 @@
+
+
+response_times = [120, 350, 90, 800, 210]
+
+slow_responses = [time for time in response_times if time > 300]
+
+print(slow_responses)
+# [350, 800]
+
+# List comprehension offers a shorter syntax when you want to create
+# a new list based on the values of an existing list.
+#
+# Example:
+# Based on a list of fruits, you want a new list containing only the
+# fruits with the letter "a" in the name.
+
+# Without list comprehension, you would write a for loop with a
+# conditional test inside:
+
+fruits = ["apple", "banana", "cherry", "kiwi", "mango"]
+
+newlist = [x for x in fruits if "a" in x]
+
+print(newlist)
+#['apple', 'banana', 'mango']
+
+#Dict comprehension offers a shorter syntax when you want to create
+
+test_durations = {
+    "TC001": 120,
+    "TC002": 450,
+    "TC003": 780,
+    "TC004": 150
+}
+
+slow_tests = {
+    test_id: duration #key: value
+    for test_id, duration in test_durations.items() # for key,val in dict.items()
+    if duration > 300 # if condition    
+}
+
+print(slow_tests)

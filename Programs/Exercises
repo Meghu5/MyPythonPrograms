@@ -1,0 +1,25 @@
+
+#Write a Python program that:
+
+#Accepts a list of API response times.
+#Identifies responses slower than 500 ms.
+#Calculates the average response time.
+#Counts how many responses are under 200 ms.
+#Prints the slowest three response times in descending order. 
+
+response_times = [120, 450, 780, 220, 95, 640, 310, 150, 890, 275]
+
+slow_responses = [time for time in response_times if time > 500]
+average_time = sum(response_times) / len(response_times)
+under_200 = len([time for time in response_times if time < 200])
+top_3_slowest = sorted(response_times, reverse=True)[:3]
+
+print("Slow responses:", slow_responses)
+print("Average response time:", round(average_time, 2))
+print("Responses under 200 ms:", under_200)
+print("Top 3 slowest:", top_3_slowest)
+
+#  Slow responses: [780, 640, 890]
+#  Average response time: 393.0
+#  Responses under 200 ms: 3
+#  Top 3 slowest: [890, 780, 640]

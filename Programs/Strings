@@ -1,0 +1,137 @@
+
+import re
+
+booking_text = """
+Booking confirmed.
+PNR: EY7K9P
+Flight: EY101
+Travel Date: 2026-10-05
+Passenger Email: meghana@example.com
+Payment Token: tok_abc123xyz
+""" #string containing booking details including PNR, flight number, travel date, passenger email, and payment token
+
+patterns = {
+    "pnr": re.compile(r"\b[A-Z0-9]{6}\b"), #PNR is typically 6 alphanumeric characters - b- boundary, A-Z uppercase letters, 0-9 digits, {6} exactly 6 characters
+    "flight": re.compile(r"\b[A-Z]{2}\d{3,4}\b"),#Flight number is typically 2 letters followed by 3 or 4 digits
+    "date": re.compile(r"\b\d{4}-\d{2}-\d{2}\b"),#Date is in YYYY-MM-DD format
+    "email": re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),#Email pattern matches standard email formats
+    "token": re.compile(r"\b(tok_[A-Za-z0-9]+)\b")#Token pattern matches a string starting with 'tok_' followed by alphanumeric characters
+} # defining regex patterns for PNR, flight number, travel date, passenger email, and payment token
+
+pnr_match = patterns["pnr"].search(booking_text) # Search for PNR in the booking text
+flight_match = patterns["flight"].search(booking_text) # Search for flight number in the booking text
+date_match = patterns["date"].search(booking_text) # Search for travel date in the booking text
+email_match = patterns["email"].search(booking_text) # Search for passenger email in the booking text
+token_match = patterns["token"].search(booking_text) # Search for payment token in the booking text
+
+validation_errors = []
+
+if not pnr_match:
+    validation_errors.append("PNR not found")
+
+if not flight_match:
+    validation_errors.append("Flight number not found")
+
+if not date_match:
+    validation_errors.append("Travel date not found")
+
+if not email_match:
+    validation_errors.append("Passenger email not found")
+
+if not token_match:
+    validation_errors.append("Payment token not found")
+
+if validation_errors:
+    print("Validation FAILED")
+    for error in validation_errors:
+        print("-", error)
+else:
+    print("Validation PASSED")
+    print("PNR:", pnr_match.group())
+    print("Flight:", flight_match.group())
+    print("Travel Date:", date_match.group())
+    print("Passenger Email:", email_match.group())
+
+    masked_token = re.sub(
+        r"(?<=tok_)[A-Za-z0-9]+",
+        "***",
+        token_match.group()
+    )
+
+    print("Payment Token:", masked_token)
+    
+  
+
+pnr_pattern = re.compile(r"^[A-Z0-9]{6}$") # PNR must be exactly 6 alphanumeric characters
+
+values = ["EY7K9P", "ABC123", "invalid-reference"] 
+
+for value in values:
+    print(value, bool(pnr_pattern.fullmatch(value))) # Pri nt whether each value matches the PNR pattern
+    
+    
+#regex pattern to extract test case results from a CI log
+
+ci_log = """
+[2026-09-18 14:02:11] TC001 PASS 1.20s
+[2026-09-18 14:02:15] TC002 FAIL 2.80s
+[2026-09-18 14:02:20] TC003 PASS 0.90s
+[2026-09-18 14:02:25] TC004 BLOCKED 0.00s
+"""
+
+pattern = re.compile(
+    r"\[(?P<timestamp>[^\]]+)\]\s+" #timestamp is captured within square brackets, using a named group 'timestamp' that matches any character except a closing bracket
+    r"(?P<test_id>TC\d{3})\s+" #test ID is captured using a named group 'test_id' that matches 'TC' followed by exactly 3 digits
+    r"(?P<status>PASS|FAIL|BLOCKED)\s+" #status is captured using a named group 'status' that matches one of the three possible values
+    r"(?P<duration>\d+\.\d+)s" #duration is captured using a named group 'duration' that matches a decimal number
+)
+
+results = []
+
+for match in pattern.finditer(ci_log): #Iterate over all matches of the pattern in the CI log
+    record = {
+        "timestamp": match.group("timestamp"),
+        "test_id": match.group("test_id"),
+        "status": match.group("status"),
+        "duration": float(match.group("duration"))
+    }
+    results.append(record)
+
+print(results)
+
+failed_tests = [
+    result["test_id"]
+    for result in results
+    if result["status"] == "FAIL"
+]
+
+total_duration = sum(result["duration"] for result in results) 
+
+print("Failed tests:", failed_tests)
+print("Total duration:", total_duration)
+
+# Function to mask sensitive values in a given text using regex patterns
+
+def mask_sensitive_values(text: str) -> str:
+    patterns = [
+        (r"(?i)(password=)[^\s&]+", r"\1***"),
+        (r"(?i)(token=)[^\s&]+", r"\1***"),
+        (r"(?i)(authorization:\s*bearer\s+)[^\s]+", r"\1***"),
+        (r"(?i)(api[_-]?key=)[^\s&]+", r"\1***")
+    ]
+
+    masked_text = text
+
+    for pattern, replacement in patterns:
+        masked_text = re.sub(pattern, replacement, masked_text)
+
+    return masked_text
+
+
+raw_log = (
+    "POST /login password=Secret123 "
+    "token=abcxyz authorization: Bearer eyJhbGci "
+    "api_key=key123"
+)
+
+print(mask_sensitive_values(raw_log))

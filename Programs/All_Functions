@@ -1,0 +1,53 @@
+
+#Append
+
+items = [1, 2]
+items.append([3, 4])
+
+print(items)
+# [1, 2, [3, 4]]
+
+#$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+#extend
+
+items = [1, 2]
+items.extend([3, 4])
+
+print(items)
+# [1, 2, 3, 4]
+
+#$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+#sort() modifies the original list and returns None.
+#sorted() returns a new sorted list and leaves the original unchanged.
+values = [3, 1, 2]
+
+result = values.sort()
+print(result)  # None
+print(values)  # [1, 2, 3]#ascending order
+values.sort(reverse=True)
+print(values)  # [3, 2, 1] #descending order
+
+values = [3, 1, 2]
+new_values = sorted(values)#ascending order 
+new_value = sorted(values,reverse=True) #descending order
+
+print(values)      # [3, 1, 2]
+print(new_values)  # [1, 2, 3]
+print(new_value)   # [3, 2, 1]
+
+#shallow copy vs deep copy
+
+a = [1, 2]
+b = a
+b.append(3)
+
+print(a)  # [1, 2, 3] so it updates the original list as well because both a and b point to the same list in memory.
+
+b=a.copy()  # or b = list(a) or b = a[:]
+b.append(4)
+print(a)  # [1, 2, 3] so it does not update the original list because b is a new list that is a copy of a.
+print(b)  # [1, 2, 3, 4]
+
+
