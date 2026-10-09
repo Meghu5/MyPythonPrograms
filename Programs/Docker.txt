@@ -1,0 +1,97 @@
+
+AWSTemplateFormatVersion: "2010-09-09"// docker cmds $
+
+docker build -t banking-qa:v1 -> Build the automation image
+docker images ---- List local images
+docker run --name qa-test banking-qa:v1 ----Create and start a test container 
+docker ps ----List running containers
+docker ps -a ----Include stopped containers
+docker logs qa-test ----Inspect test output
+docker logs -f qa-test ---- Follow live logs
+docker exec -it qa-test sh ---- Open a shell in a running container
+docker stop qa-test ---- Gracefully stop a running container
+docker rm qa-test ---- Remove a stopped container
+docker inspect qa-test ----Inspect container configuration and state
+
+Important: docker exec requires a running container. If your test container exits, inspect its logs 
+instead. Avoid --rm while debugging if you need to retain the stopped container for inspection.
+
+
+“I first check the container status and exit code, then review its logs. I verify the entry-point command, 
+required environment variables, dependency installation, mounted files, and permissions. 
+I also check whether the process is designed to run as a one-off task. An automation container
+ exiting after the test suite completes can be expected behavior.”
+
+docker ps -a
+docker logs banking-test
+docker inspect banking-test
+
+Example causes:
+
+pytest returns a nonzero exit code because a test failed.
+The application cannot connect to its API.
+A required environment variable is missing.
+The container's startup command is incorrect.
+
+// cred and env set up
+
+docker run --rm \
+  -e BASE_URL=https://test.example.com \
+  -e TEST_ENV=qa \
+  banking-qa:v1
+For passwords and tokens, use your CI/CD secret store or an approved secret-management mechanism.
+Do not bake credentials into the Dockerfile, image layers, source code, or logs.
+
+
+docker stop: requests graceful termination, then forcefully terminates after the configured grace period.
+
+docker kill: sends a termination signal immediately by default.
+
+docker rm: removes a stopped container; it is not a substitute for stopping a running container unless forced.
+
+// Dockerfile - compose.yaml
+  
+services:
+  api:
+    image: banking-api:latest
+
+  tests:
+    build: .
+    depends_on:
+      - api
+    command: pytest -v
+    depends_on controls startup ordering, but does not by itself guarantee the API is ready 
+    to accept requests. Use health checks or application-level retry/readiness 
+
+//docker files 
+  FROM mcr.microsoft.com/playwright/python:v1.55.0-noble
+
+WORKDIR /app
+
+COPY requirements.txt // copies this
+RUN pip install --no-cache-dir -r requirements.txt  // Copies and installs your dependencies. 
+Copying this file before the rest of your code allows Docker to reuse the dependency installation layer when only test code changes.
+
+COPY . .   // copy your prj files to app directory above
+
+CMD ["pytest", "-n", "4", "-v", "--junitxml=reports/results.xml"]
+
+The Playwright Python package in requirements.txt must match the image's Playwright version. 
+Replace the illustrative version with the version approved for your project.  
+
+“Container filesystems are ephemeral, and a container removed with --rm cannot be used later 
+to retrieve its internal files. I make test results durable by writing them to a mounted volume or
+ uploading them to CI artifact storage. I configure the pipeline to publish reports even when tests fail,
+  and capture screenshots, traces, and logs during test teardown or failure hooks.”
+   
+  Run the container with a mounted reports directory:
+
+docker run --name banking-qa \
+  -v "$PWD/reports:/app/reports" \
+  banking-qa:v1
+For Kubernetes, options include:
+
+Upload results directly to CI artifact storage or object storage.
+Use a PersistentVolumeClaim when shared persistent storage is needed
+Publish JUnit/XML reports from the CI pipeline.
+Preserve diagnostic logs separately from the container lifecycle. 

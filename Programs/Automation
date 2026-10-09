@@ -1,0 +1,11 @@
+ "WHAT IS YOUR BIGGEST CHALLENGE IN AUTOMATION?"
+
+Good answer:
+
+Maintaining reliability as the application and execution scale increase. 
+The difficulty is usually not writing the first test; it is keeping thousands of automated tests
+ deterministic across environments, data and parallel execution. I address that through architecture,
+ stable locators, controlled test data, explicit synchronization, isolation, good failure artifacts 
+ and regular flaky-test analysis.
+ 
+ 

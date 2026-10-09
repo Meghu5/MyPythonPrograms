@@ -1,0 +1,15 @@
+// decision after execution
+stage('Quality Gate') {
+    steps {
+        script {
+            if (env.CRITICAL_TEST_FAILURES.toInteger() > 0) {
+                error('Release blocked: critical tests failed')
+            }
+
+            if (env.INFRASTRUCTURE_ERRORS.toInteger() > 0) {
+                error('Release blocked: test execution incomplete')
+            }
+        }
+    }
+}This illustrates the decision logic; a real pipeline must calculate these values from trusted test results, 
+validate that they are present and numeric, and fail closed when required results are missing.

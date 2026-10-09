@@ -1,0 +1,114 @@
+
+from dataclasses import dataclass
+from typing import Any, Protocol
+
+
+@dataclass(frozen=True)
+class Settings:
+    base_url: str
+    timeout: float = 10.0
+    environment: str = "QA"
+
+
+class HttpResponse(Protocol):
+    status_code: int
+
+    def json(self) -> dict[str, Any]:
+        ...
+
+
+class HttpTransport(Protocol):
+    def post(
+        self,
+        url: str,
+        *,
+        json: dict[str, Any],
+        headers: dict[str, str],
+        timeout: float
+    ) -> HttpResponse:
+        ...
+
+
+class AuthProvider:
+    def __init__(self, token: str):
+        self._token = token
+
+    def headers(self) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self._token}",
+            "Content-Type": "application/json"
+        }
+
+
+class BookingValidator:
+    REQUIRED_FIELDS = {
+        "pnr",
+        "status",
+        "passenger",
+        "flight"
+    }
+
+    @classmethod
+    def validate(cls, response_json: dict[str, Any]) -> list[str]:
+        errors = []
+
+        missing = cls.REQUIRED_FIELDS - response_json.keys()
+
+        if missing:
+            errors.append(
+                f"Missing fields: {sorted(missing)}"
+            )
+
+        if response_json.get("status") != "CONFIRMED":
+            errors.append(
+                "Booking status must be CONFIRMED"
+            )
+
+        return errors
+
+
+class BookingService:
+    def __init__(
+        self,
+        settings: Settings,
+        transport: HttpTransport,   # Protocol for HTTP transport
+        auth_provider: AuthProvider,
+        validator: BookingValidator
+    ):
+        self.settings = settings
+        self.transport = transport
+        self.auth_provider = auth_provider
+        self.validator = validator
+
+    def create_booking(
+        self,
+        payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        url = (
+            f"{self.settings.base_url.rstrip('/')}"
+            "/bookings"
+        )
+
+        response = self.transport.post(
+            url,
+            json=payload,
+            headers=self.auth_provider.headers(),
+            timeout=self.settings.timeout
+        )
+
+        if response.status_code != 201:
+            raise RuntimeError(
+                f"Booking creation failed: "
+                f"status={response.status_code}"
+            )
+
+        response_json = response.json()
+        errors = self.validator.validate(response_json)
+
+        if errors:
+            raise AssertionError(
+                "Booking contract validation failed: "
+                + "; ".join(errors)
+            )
+
+        return response_json

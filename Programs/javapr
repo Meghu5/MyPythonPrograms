@@ -1,0 +1,479 @@
+//duplicate number in array $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+int[] numbers = {1, 2, 3, 2, 4, 5, 1};
+
+Set<Integer> seen = new HashSet<>();
+Set<Integer> duplicates = new HashSet<>();
+
+for (int number : numbers) {
+
+    if (!seen.add(number)) { // If the number was already seen, it's a duplicate
+        duplicates.add(number);
+    }
+}
+
+System.out.println(duplicates);
+
+// same using streams
+
+List<Integer> numbers =
+    Arrays.asList(1, 2, 3, 2, 4, 3, 5);
+
+Set<Integer> seen = new HashSet<>();
+
+Set<Integer> duplicates =
+    numbers.stream()
+           .filter(n -> !seen.add(n))
+           .collect(Collectors.toSet());
+
+//prime number $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+    
+public class PrimeNumberCheck {
+    public static void main(String[] args) {
+        int i = 15;
+        int j = 0;
+
+        for (int k = 1; k <= i; k++) {
+            if (i % k == 0) {
+                j++;
+            }
+        }
+
+        if (j == 2) {
+            System.out.println(i + " is a prime");
+        } else {
+            System.out.println(i + " is not a prime");
+        }
+    }
+}
+// Anagram $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+String a = "listen";
+String b = "silent";
+
+char[] x = a.toCharArray();
+char[] y = b.toCharArray();
+
+Arrays.sort(x);
+Arrays.sort(y);
+
+System.out.println(
+    Arrays.equals(x, y)
+);
+
+// Fibbanoci $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+int a = 0;
+int b = 1;
+
+for (int i = 0; i < 10; i++) {
+
+    System.out.print(a + " ");
+
+    int c = a + b;
+    a = b;
+    b = c;
+}
+
+// swap without third variable $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+int a = 10;
+int b = 20;
+
+a = a + b;
+b = a - b;
+a = a - b;
+
+System.out.println(a);
+System.out.println(b);
+// remove dup from array $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+int[] arr = {1, 2, 2, 3, 3, 4};
+
+Set<Integer> unique =
+    new LinkedHashSet<>();
+
+for (int n : arr) {
+    unique.add(n);
+}
+
+System.out.println(unique);
+
+// find largest number in array $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+int[] arr = {1, 2, 3, 4, 5};
+int max=arr[0];
+
+for(int i : arr){
+    if(i>max){
+        max=i;
+    }
+}
+System.out.println("Largest number: " + max);   
+
+// duplicate number in array $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+int[] arr = {1, 2, 3, 2, 4, 5, 1};
+
+Set<Integer> seen = new HashSet<>();
+Set<Integer> duplicates = new HashSet<>();
+
+for(int num :arr){
+    if(!seen.add(num)){
+        duplicates.add(num);
+    }
+}
+System.out.println("Duplicate numbers: " + duplicates);
+
+// first non-repeating character in string $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+String input = "swiss";
+
+Map<Character, Integer> map =
+    new LinkedHashMap<>();
+
+for (char c : input.toCharArray()) {
+    map.put(c, map.getOrDefault(c, 0) + 1);
+}
+
+for (Map.Entry<Character, Integer> entry :
+        map.entrySet()) {
+
+    if (entry.getValue() == 1) {
+        System.out.println(entry.getKey());
+        break;
+    }
+}
+//Count characters$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+String input = "automation";
+
+Map<Character, Integer> map =
+    new HashMap<>();
+
+for (char c : input.toCharArray()) {
+    map.put(c, map.getOrDefault(c, 0) + 1);
+}
+
+System.out.println(map);
+
+//Palindrome and reverse string $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+String input = "madam";
+String rev="";
+for(int i=input.length()-1;i>=0;i--){
+    rev+=input.charAt(i);
+}
+System.out.println("Reversed string: " + rev);
+if (input.equals(rev)) {
+    System.out.println("The string is a palindrome.");
+} else {
+    System.out.println("The string is not a palindrome.");
+}
+
+String input = "madam";
+
+String reverse =
+    new StringBuilder(input)
+    .reverse()
+    .toString();
+
+if (input.equals(reverse)) {
+    System.out.println("Palindrome");
+} else {
+    System.out.println("Not palindrome");
+}
+
+String input = "ADIB";
+
+String result =
+    new StringBuilder(input).reverse().toString();
+
+System.out.println(result);
+
+// reverse number $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+int number = 12345;
+int reversed = 0;   
+
+for(int i = number; i != 0; i=i/10) {
+    int digit = i % 10;
+    reversed = reversed * 10 + digit;
+}
+System.out.println("Reversed number: " + reversed);
+
+// count words in string $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+String input =
+    "Selenium API Selenium Mobile";
+
+Map<String, Integ   er> map =
+    new HashMap<>();
+
+for (String word : input.split(" ")) {
+    map.put(
+        word,
+        map.getOrDefault(word, 0) + 1
+    );
+}
+
+System.out.println(map);
+
+//Streams $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+List<Integer> numbers =
+    Arrays.asList(10, 20, 30, 40); // to create fixed size list
+
+List<Integer> result =
+    numbers.stream()
+           .filter(n -> n > 20) // Filter numbers greater than 20
+           .collect(Collectors.toList());
+
+System.out.println(result);
+
+// To find repeated chars in string $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+public class PrimeNumberCheck {
+    public static void main(String[] args) {
+String a = "MeghanaPothuri";
+        Map<Character,Integer> m = new HashMap<>();
+for(char c : a.toCharArray()){
+    m.put(c,m.getOrDefault(c,0)+1);
+}
+    for(Map.Entry<Character,Integer> v : m.entrySet()){
+        if(v.getValue()>1){
+            System.out.println(v.getKey());
+        }
+            
+    }
+    }
+}
+// reverse each word in string $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+String input = "ADIB Automation Engineer";
+
+String[] words = input.split(" ");
+
+StringBuilder result = new StringBuilder();
+
+for (String word : words) {
+
+    String reversed =
+        new StringBuilder(word)
+        .reverse()
+        .toString();
+
+    result.append(reversed).append(" ");
+}
+
+System.out.println(result.toString().trim());// BIDA noitamotuA reenignE
+
+//sorting without using sort method $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+int[] arr = {10, 50, 20, 40, 30};
+
+for (int i = 0; i < arr.length; i++) {
+
+    for (int j = i + 1; j < arr.length; j++) {
+
+        if (arr[i] < arr[j]) { // For descending order, use '>' for ascending order
+
+            int temp = arr[i];
+
+            arr[i] = arr[j];
+
+            arr[j] = temp;
+        }
+    }
+}
+
+for (int n : arr) {
+    System.out.print(n + " ");
+}
+
+// explicit wait - $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+// explicit wait - 
+WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("elementId")));
+
+Meghana Self intro - star $
+
+/*I have around 11 years of experience in software quality engineering and test automation, 
+working across web, mobile and API testing.My automation experience includes Selenium, Playwright
+ and Appium, along with API automation and validation. I have worked with automation frameworks, 
+ CI/CD integration, database validation, test strategy, regression automation and defect/root-cause analysis.
+At a senior level, my focus is not only on writing scripts but on designing maintainable automation frameworks,
+ reducing flaky tests, improving execution time through parallelization, managing test data, integrating 
+ suites into CI/CD and providing useful diagnostics and reporting.I also have experience building a 
+ modern quality-engineering framework that combines API, UI, mobile, security, observability and 
+ AI-quality validation. This has given me strong exposure to contract testing, quality gates, 
+ deterministic validation and framework architecture.I am now looking for a Senior QA Automation 
+ role where I can combine hands-on automation with quality engineering and leadership, 
+ particularly in a critical domain such as banking. */
+ 
+// Remove Duplicate Characters - $$$$$$$$$$$$$$$$$$
+
+String input = "automation";
+Set<Character> seen = new LinkedHashSet<>();
+for(char c:input.toCharArray()){ // LinkedHashSet maintains insertion order 
+    seen.add(c);
+}
+System.out.println(seen.toString()); // convert set to string - [a, u, t, o, m, i, n]
+seen.forEach(System.out::print); //automin
+StringBuilder sb = new StringBuilder();
+for(char c:seen){
+    sb.append(c);
+}
+System.out.println(sb.toString()); //automin
+
+// second largest number in array $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+int[] numbers = {20, 10, 80, 30, 70};
+
+int largest = Integer.MIN_VALUE; // Initialize largest to the smallest possible integer
+int secondLargest = Integer.MIN_VALUE; // Initialize second largest to the smallest possible integer
+
+for (int number : numbers) {
+    if (number > largest) {
+        secondLargest = largest; // Update second largest
+        largest = number; // Update largest
+    } else if (number > secondLargest && number != largest) {
+        secondLargest = number; // Update second largest if it's not equal to the largest
+    }
+}
+System.out.println("Largest: " + largest);
+System.out.println("Second Largest: " + secondLargest);
+
+//Missing Number in Array $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+int[] arr = {1, 2, 4, 5, 6}; // Example array with a missing number
+int n= arr.length+1; // Total numbers should be n+1
+int expectedSum = n * (n + 1) / 2; // Sum of first n natural numbers
+int actualSum = 0;
+for (int number : arr) {
+    actualSum += number;
+}
+int missingNumber = expectedSum - actualSum;
+System.out.println("Missing Number: " + missingNumber);
+
+
+// remove spaces and print index and char $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+String input = "Automation Test Engineer";
+
+String val = input.replaceAll(" ", ""); // Remove spaces
+
+for (int i = val.length() - 1; i >= 0; i--) {
+    System.out.print(i +"-"+val.charAt(i));
+}
+
+// broken links $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+List<WebElement> links =
+    driver.findElements(By.tagName("a"));
+
+for (WebElement link : links) {
+
+    String url = link.getAttribute("href");
+
+    if (url == null || url.isBlank()) {
+        continue;
+    }
+
+    HttpURLConnection connection =
+        (HttpURLConnection)
+        new URL(url).openConnection();
+
+    connection.setRequestMethod("HEAD");
+
+    connection.connect();
+
+    int responseCode =
+        connection.getResponseCode();
+
+    if (responseCode >= 400) {
+        System.out.println("Broken: " + url);
+    } else {
+        System.out.println("Valid:  " + url);
+    }
+}
+
+// implementing strategy pattern $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+driver.manage()
+      .timeouts()
+      .implicitlyWait(Duration.ofSeconds(10));
+
+// Thread local - parallel execution $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+public class DriverManager {
+
+    private static final ThreadLocal<WebDriver>// ThreadLocal gives each test thread its own WebDriver instance.
+        DRIVER = new ThreadLocal<>();
+
+    public static void setDriver(WebDriver driver) {
+        DRIVER.set(driver);
+    }
+
+    public static WebDriver getDriver() {
+        return DRIVER.get();
+    }
+
+    public static void unload() {
+        DRIVER.remove();
+    }
+} 
+
+// rest assured post
+
+Map<String, Object> request =
+    new LinkedHashMap<>();
+
+request.put("fromAccount", "1001");
+request.put("toAccount", "2001");
+request.put("amount", 500);
+
+given()
+    .baseUri("https://api.bank.com")
+    .contentType(ContentType.JSON)
+    .header(
+        "Authorization",
+        "Bearer " + token
+    )
+    .body(request)
+.when()
+    .post("/transfers")
+.then()
+    .statusCode(201);
+
+// appium - context switch - web to native $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+Set<String> contexts =
+    driver.getContextHandles();
+
+for (String context : contexts) {
+    System.out.println(context);
+}
+// switch to webview context
+driver.context(
+    "WEBVIEW_com.example"
+);
+// switch to native context local app
+driver.context("NATIVE_APP");
+
+// start appium server programmatically $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+AppiumDriverLocalService service =
+    new AppiumServiceBuilder()
+        .build();
+
+service.start();
+
+//How do you automate OTP? $
+
+/* 
+I don't try to bypass real production security mechanisms. 
+In lower test environments, I use an approved testing mechanism such as a test OTP service, 
+mocked authentication service, API/DB-accessible controlled test OTP, or seeded deterministic 
+OTP depending on architecture. Production OTP should not be intercepted or hardcoded. */
+

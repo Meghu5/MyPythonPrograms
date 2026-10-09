@@ -1,4 +1,5 @@
 
+from importlib.metadata import metadata
 import re
 
 booking_text = """
@@ -114,8 +115,9 @@ print("Total duration:", total_duration)
 
 def mask_sensitive_values(text: str) -> str:
     patterns = [
-        (r"(?i)(password=)[^\s&]+", r"\1***"),
-        (r"(?i)(token=)[^\s&]+", r"\1***"),
+        (r"(?i)(password=)[^\s&]+", r"\1***"), #(?i) → case-insensitive matching (password=) → capture the literal text password=
+#[^\s&]+ → match everything after it until whitespace or & r"\1*** - keep the first captured group then add ***part:
+        (r"(?i)(token=)[^\s&]+", r"\1***"), 
         (r"(?i)(authorization:\s*bearer\s+)[^\s]+", r"\1***"),
         (r"(?i)(api[_-]?key=)[^\s&]+", r"\1***")
     ]
@@ -135,3 +137,39 @@ raw_log = (
 )
 
 print(mask_sensitive_values(raw_log))
+
+#match() checks only at the beginning.
+#search() finds a match anywhere.
+#fullmatch() requires the entire string to match.
+#For test-data validation, I generally prefer fullmatch() because it prevents accidental partial matches.
+#findall() returns matching strings
+#finditer() returns match objects, which provide:
+    #Matched value
+    #Start position
+    #End position
+    #Named groups
+
+#I use finditer() when location or detailed match metadata is needed.
+
+#1. Prefer structured parsing over regex when structure exists
+
+        #Use:
+        #json for JSON
+        #xml.etree.ElementTree or lxml for XML
+        #csv for CSV
+        #urllib.parse for URLs
+        #datetime for dates and times
+
+#Use regex mainly for:
+
+        #Logs
+        #Free text
+        #Headers
+        #Specific field-format validation
+        #Extraction from unstructured messages
+        
+#9. Test boundary cases
+
+       # For every validation pattern, test:
+       # Valid minimum  Valid maximum Empty string Null or missing value Lowercase input Extra spaces Special characters Too-short input Too-long input
+        

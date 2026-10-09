@@ -40,3 +40,51 @@ slow_tests = {
 }
 
 print(slow_tests)
+from abc import ABC, abstractmethod
+
+# Test Strategy Pattern Implementation
+class TestDataStrategy(ABC):
+    @abstractmethod
+    def create_booking_payload(self):
+        pass
+
+
+class SmokeBookingStrategy(TestDataStrategy):
+    def create_booking_payload(self):
+        return {
+            "passenger_count": 1,
+            "fare_type": "ECONOMY"
+        }
+
+
+class RegressionBookingStrategy(TestDataStrategy):
+    def create_booking_payload(self):
+        return {
+            "passenger_count": 4,
+            "fare_type": "BUSINESS",
+            "add_ancillary": True
+        }
+
+
+class BookingDataFactory:
+    def __init__(self, strategy: TestDataStrategy):
+        self.strategy = strategy
+
+    def build(self):
+        return self.strategy.create_booking_payload()
+    
+# How would you explain SOLID in a QA framework?
+ #Single Responsibility: A validator should validate, not send HTTP requests.
+#Open/Closed: Add a new reporter without rewriting the test runner.
+#Liskov Substitution: A fake transport should be usable wherever the transport contract is expected.
+#Interface Segregation: Prefer small focused interfaces over one large client interface.
+#Dependency Inversion: High-level services depend on abstractions, not concrete HTTP libraries.
+
+class Booking:
+    def confirm(self): 
+        if self.status != "PENDING": 
+            raise ValueError(
+                "Only pending bookings can be confirmed" 
+            )
+ 
+        self.status = "CONFIRMED" # Set the status to confirmed 

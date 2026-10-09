@@ -1,0 +1,247 @@
+
+“Docker is used to build and run containers. Kubernetes orchestrates 
+containers across a cluster of machines. It manages deployment, scaling,
+service discovery, health checks, restart behavior, and rolling updates.
+In an automation framework, Kubernetes can run parallel test workloads,
+distribute tests, and replace failed test-runner Pods.”
+
+Example: If a banking regression suite has 1,000 tests, Kubernetes can
+schedule multiple test-runner Pods to execute independent test groups
+in parallel.
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: banking-api-tests
+  namespace: qa
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: tests
+          image: banking-qa:v1
+          command: ["pytest", "-v", "--junitxml=/reports/results.xml"]
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+This example assumes the image has the tests and pytest installed. In practice, mount or upload /reports so
+ results survive after the Job finishes. A local Docker image must also be available to the cluster, 
+ or pushed to a registry the cluster can access.
+ 
+
+ //Conditions:
+   ConditionName: 
+ 
+Build Docker image ---- docker build -t qa:v1 .
+
+Run a container - docker run --name qa qa:v1
+
+View container logs - docker logs qa
+
+Inspect a Pod - kubectl describe pod POD -n qa
+
+View Pod logs - kubectl logs POD -n qa
+
+List workloads - kubectl get pods,deployments,services -n qa
+
+Apply a YAML manifest - kubectl apply -f deployment.yaml
+
+Scale a Deployment - kubectl scale deployment APP --replicas=3 -n qa
+
+Check rollout - kubectl rollout status deployment/APP -n qa
+
+Undo rollout - kubectl rollout undo deployment/APP -n qa
+
+Run a command in a container - kubectl exec -it POD -n qa -- sh
+
+Delete a Job - kubectl delete job JOB_NAME -n qa
+Ingress - External HTTP/HTTPS entry point and routing rules
+Service - Stable network address for application Pods
+ConfigMap -Non-sensitive settings
+Secret -Credentials and sensitive data
+Deployment - Manages replicas and application updates
+All resources can be scoped to a Kubernetes Namespace. 
+
+//Pods
+The smallest deployable unit in Kubernetes. A Pod contains one or more closely related containers
+ sharing networking and potentially storage.
+
+Example: One Pod runs a pytest API automation container.
+
+Interview answer: “I inspect Pod status, events, and logs when an automated test runner fails.”
+
+kubectl get pods -n qa  ->  n-namespace
+kubectl describe pod test-runner -n qa
+kubectl logs test-runner -n qa
+
+// Deployment
+Manages application replicas through ReplicaSets and supports rolling updates and rollbacks.
+
+Example: Keep three banking API Pods running.
+
+Interview answer: “I use Deployments for stateless services and inspect rollout status, replica counts, 
+and failed Pods during releases.”
+
+kubectl get deployments -n qa
+kubectl scale deployment banking-api --replicas=3 -n qa
+kubectl rollout status deployment/banking-api -n qa
+kubectl rollout undo deployment/banking-api -n qa
+// Service
+Provides a stable network endpoint for a changing set of Pods, usually selected by labels.
+
+Example: API tests connect to banking-api instead of depending on individual Pod IP addresses.
+
+Interview answer: “If a Service cannot reach its Pods, I check selectors, Pod readiness, target ports, EndpointSlices, and network policies.”
+
+kubectl get svc -n qa
+kubectl get endpointslices -n qa
+kubectl describe svc banking-api -n qa
+
+Common types: ClusterIP, NodePort, and LoadBalancer
+| Type | Accessible From | How It Works | Typical Use |
+|---|---|---|---|
+| **ClusterIP** | Inside the cluster | Exposes an internal Service IP | Communication between applications |
+| **NodePort** | Outside the cluster, if nodes are reachable | Exposes a port on each node | Testing or direct node access |
+| **LoadBalancer** | Through an external load balancer | Requests a load balancer from the infrastructure provider | Exposing applications to clients |
+Suppose your application listens on port 8080 inside its pods.
+ClusterIP is the default. Other pods can reach it using the Service name, 
+such as http://my-app:80 within the same namespace.
+
+apiVersion: v1
+kind: Service //type
+metadata:
+  name: my-app
+spec:
+  type: ClusterIP
+  selector:
+    app: my-app
+  ports:
+    - port: 80
+      targetPort: 8080 
+
+//nodeport
+NodePort adds a port on the nodes. Using the configuration below, clients can connect 
+to http://<node-ip>:30080, provided networking and firewall rules allow it.
+spec:
+  type: NodePort //type
+  selector:
+    app: my-app
+  ports:
+    - port: 80
+      targetPort: 8080
+      nodePort: 30080
+
+//LoadBalancer
+LoadBalancer requests an external load balancer. Its address appears in the Service’s EXTERNAL-IP column once provisioned.
+ Provisioning requires a compatible cloud provider or load balancer implementation.
+ spec:
+  type: LoadBalancer
+  selector:
+    app: my-app
+  ports:
+    - port: 80
+      targetPort: 8080
+port: the port exposed by the Service.
+targetPort: the application’s port in the pod.
+nodePort: the port exposed on each node.
+check your services - kubectl get services -n qa
+
+// ConfigMap
+Stores non-sensitive configuration separately from the container image.
+
+Example: QA API URL, logging level, and feature flags.
+
+Interview answer: “I externalize environment-specific configuration so the same image can be
+ promoted across Dev, QA, and staging.”
+
+kubectl get configmaps -n qa
+kubectl describe configmap banking-config -n qa
+
+//Secret
+Stores sensitive values such as API tokens, passwords, and certificates.
+
+Example: A QA service-account token injected into a test-runner Pod.
+
+Interview answer: “I never hardcode secrets in source code or Docker images. 
+I restrict access with RBAC, use an approved secret manager, and avoid exposing credentials in logs.”
+
+kubectl get secrets -n qa
+
+Kubernetes Secrets are not automatically encrypted at rest in every cluster configuration;
+ security settings and access permissions must be verified.
+ // node ,pod, cluster
+ Cluster: a group of nodes managed by Kubernetes.
+Node: a machine that runs pods.
+Pod: contains one or more containers that run together.
+Cluster
+└── Node (a physical machine or virtual machine)
+    ├── Pod A
+    │   └── Container
+    └── Pod B
+        ├── Container 1
+        └── Container 2
+kubectl get pods -n qa -o wide -- which nodes runs the Pod
+RBAC means Role-Based Access Control. 
+In Kubernetes, it determines who can perform which actions on which resources.
+
+// Namespaces
+Logically separates and organizes resources within a cluster
+Example: Separate dev, qa, and staging namespaces.
+
+Interview answer: “I use namespaces for resource organization, environment-specific configuration, 
+quotas, and RBAC. A namespace alone is not a complete security boundary.”
+
+kubectl get namespaces
+kubectl get pods -n qa
+kubectl get pods -A
+
+// Ingress
+
+Defines HTTP/HTTPS routing rules for external access to Kubernetes Services. 
+An Ingress controller must implement those rules.
+
+Example: Route qa.bank.example.com/api to the banking API Service.
+
+Interview answer: “I troubleshoot Ingress by checking host and path rules, 
+TLS configuration, controller health, backend Service ports, and endpoint readiness.”
+
+kubectl get ingress -n qa
+kubectl describe ingress banking-ingress -n qa
+
+Ingress is not itself the controller or a load balancer implementation.
+ For new advanced routing capabilities, Kubernetes Gateway API may also be relevant
+ Compare
+
+Ingress → Service → Pods
+A Deployment manages the desired replica count through its ReplicaSet.
+
+Pod vs Deployment - Pod runs containers; Deployment manages replicas and updates
+Deployment vs Service - Deployment manages workloads; Service provides stable networking
+Service vs Ingress - Service routes to Pods internally; Ingress defines external HTTP/HTTPS routes to Services
+ConfigMap vs Secret - Ordinary configuration vs sensitive configuration
+Namespace vs Cluster - Namespace scopes namespaced resources; a cluster contains the control 
+plane and worker nodes
+
+7. Real-time scenario: your tests fail in Kubernetes, but Jenkins shows no failures
+
+A strong senior SDET response would be:
+Check whether the Kubernetes Job actually ran and completed.
+Inspect Pod status and test-runner logs.
+Verify that the test framework generated JUnit XML or the expected result files.
+Check whether the report was written inside the container but never copied or uploaded.
+Confirm that the CI publishing step ran even after test failure.
+Fail the pipeline if required test results are missing.
+Preserve logs, screenshots, traces, and result files for investigation.
+Example diagnostic commands:
+kubectl get jobs,pods -n qa
+kubectl logs job/banking-api-tests -n qa
+kubectl describe job banking-api-tests -n qa
+
+A container exiting is not necessarily an error: a one-off test runner is expected to exit when 
+its tests finish. The key is whether the exit code, test results, and artifacts were correctly collected.
