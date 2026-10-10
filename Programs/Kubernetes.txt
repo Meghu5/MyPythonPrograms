@@ -245,3 +245,4 @@ kubectl describe job banking-api-tests -n qa
 
 A container exiting is not necessarily an error: a one-off test runner is expected to exit when 
 its tests finish. The key is whether the exit code, test results, and artifacts were correctly collected.
+

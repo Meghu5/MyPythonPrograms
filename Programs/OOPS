@@ -1,0 +1,12 @@
+Senior-level answer: I use an abstract class when related page objects or services need common implementation 
+and state. I use an interface when multiple implementations must
+ follow the same contract without being tied to a shared class hierarchy.
+ 
+ Interview-ready answer: “I use encapsulation to protect WebDriver and page elements,
+  abstraction to expose reusable operations, inheritance to share common test setup,
+   and polymorphism to support different implementations behind the same interface.”
+
+A. Encapsulation
+
+Encapsulation keeps data and its implementation details inside a class and exposes controlled operations.
+    

@@ -154,7 +154,15 @@ for (char c : input.toCharArray()) {
     map.put(c, map.getOrDefault(c, 0) + 1);
 }
 
-System.out.println(map);
+System.out.println(map); // {a=2, u=1, t=2, o=2, m=1, i=1, n=1} count chars
+//continuation of count characters below to find duplicate characters in a string $$$$$$$
+// Find the duplicate characters in a string $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+for (Map.Entry<Character, Integer> en : map.entrySet()) { // Iterate through the map entries
+    if (en.getValue() > 1) { // Check if the character count is greater than 1
+        System.out.println(en.getKey()); // { a, t, o } - print duplicate characters
+    } 
+}
 
 //Palindrome and reverse string $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -190,6 +198,12 @@ String result =
 
 System.out.println(result);
 
+StringBuilder sb = new StringBuilder(input);
+for(int i=input.length()-1;i>=0;i--){
+    sb.append(input.charAt(i));
+}
+System.out.println(sb.toString());
+
 // reverse number $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
 int number = 12345;
@@ -215,8 +229,13 @@ for (String word : input.split(" ")) {
         map.getOrDefault(word, 0) + 1
     );
 }
-
-System.out.println(map);
+ 
+System.out.println(map); // {Selenium=3, API=1, Mobile=1} count words
+for (Map.Entry<String, Integer> m : map.entrySet()) {
+    if (m.getValue() > 1) {
+        System.out.println(m.getKey()); // print duplicate words
+    }
+}
 
 //Streams $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -241,10 +260,13 @@ for(char c : a.toCharArray()){
 }
     for(Map.Entry<Character,Integer> v : m.entrySet()){
         if(v.getValue()>1){
-            System.out.println(v.getKey());
+            System.out.println(v.getKey()); // {a, h, g, n, o} - print duplicate characters
         }
-            
-    }
+            if(v.getValue()==1){
+                System.out.println(v.getKey()); // {M, e, P, r, i} - print unique characters
+                System.out.println(v.getKey()); // {M} - first unique character
+                break; // break after first unique character is found
+            }
     }
 }
 // reverse each word in string $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -269,7 +291,7 @@ System.out.println(result.toString().trim());// BIDA noitamotuA reenignE
 
 //sorting without using sort method $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-int[] arr = {10, 50, 20, 40, 30};
+int[] arr = {10, 50, 20, 40, 30,30,50,20,40,30};
 
 for (int i = 0; i < arr.length; i++) {
 
@@ -287,8 +309,24 @@ for (int i = 0; i < arr.length; i++) {
 }
 
 for (int n : arr) {
-    System.out.print(n + " ");
-}
+    System.out.print(n + " "); // 50 40 30 20 10 
+} // or
+System.out.println(Arrays.toString(arr)); // [50, 40, 30, 20, 10]
+
+Set<Integer> numbers = Arrays.stream(arr) // 
+        .boxed() // Convert int[] to Stream<Integer> -boxed() converts a stream of primitive values into a stream of wrapper objects.
+          .collect(Collectors.toSet());   example, it converts IntStream into Stream<Integer>:
+        
+
+
+System.out.println(numbers); // [50, 40, 30, 20, 10] - removes duplicates
+
+   How to explain it: The outer loop counts passes. The inner loop compares adjacent elements and swaps them if they are in the wrong order. After each pass, the largest remaining value moves to the end.
+
+Time complexity: O(n2) - two nested loops, where n is the number of elements in the array.
+
+Extra space: O(1), excluding the output representation.
+
 
 // explicit wait - $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 // explicit wait - 
@@ -325,24 +363,36 @@ for(char c:seen){
 }
 System.out.println(sb.toString()); //automin
 
-// second largest number in array $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-
-int[] numbers = {20, 10, 80, 30, 70};
-
-int largest = Integer.MIN_VALUE; // Initialize largest to the smallest possible integer
-int secondLargest = Integer.MIN_VALUE; // Initialize second largest to the smallest possible integer
-
-for (int number : numbers) {
-    if (number > largest) {
-        secondLargest = largest; // Update second largest
-        largest = number; // Update largest
-    } else if (number > secondLargest && number != largest) {
-        secondLargest = number; // Update second largest if it's not equal to the largest
-    }
+Map<Character,Integer> m = new LinkedHashMap<>();
+for(char c:input.toCharArray()){
+    m.put(c,m.getOrDefault(c,0)+1);
 }
-System.out.println("Largest: " + largest);
-System.out.println("Second Largest: " + secondLargest);
+
+
+// second largest number in array $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+// Sort it to ascending order and get the second last element. But this is not efficient. Instead, we can iterate through the array and keep track of the largest and second largest numbers.
+public static Integer secondLargest(int[] values) {
+    Integer largest = null;
+    Integer second = null;
+    int [] values = {10, 5, -10, -8}; // Example array
+
+    for (int value : values) {
+        if (largest == null || value > largest) { // If the current value is greater than the largest found so far
+            if (largest != null) { // If largest is not null, update second to the previous largest
+                second = largest; // Update second largest to the previous largest
+            }
+            largest = value; // Update largest to the current value
+        } else if (value != largest && (second == null || value > second)) {// If second is null or the current value is greater than the second largest found so far
+            second = value;// Update second largest to the current value
+        }
+    }
+
+    return second; // Return the second largest number found, or null if there isn't one - 
+}
+//For [10, 5, 10, 8], the result is 8. For an array with fewer than two distinct values, the method returns null.
+
+//Follow-up questions: What if all numbers are negative? What if the array is empty? What if duplicates 
+//should count as the second-largest value? Explain how your algorithm handles each case.
 
 //Missing Number in Array $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -446,28 +496,7 @@ given()
 .then()
     .statusCode(201);
 
-// appium - context switch - web to native $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-Set<String> contexts =
-    driver.getContextHandles();
-
-for (String context : contexts) {
-    System.out.println(context);
-}
-// switch to webview context
-driver.context(
-    "WEBVIEW_com.example"
-);
-// switch to native context local app
-driver.context("NATIVE_APP");
-
-// start appium server programmatically $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-AppiumDriverLocalService service =
-    new AppiumServiceBuilder()
-        .build();
-
-service.start();
 
 //How do you automate OTP? $
 
@@ -477,3 +506,103 @@ In lower test environments, I use an approved testing mechanism such as a test O
 mocked authentication service, API/DB-accessible controlled test OTP, or seeded deterministic 
 OTP depending on architecture. Production OTP should not be intercepted or hardcoded. */
 
+// Remove duplicates from list $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+List<Integer> a = new ArrayList<>(Arrays.asList(1,2,3,4,5,5,6)); // Create a list with duplicates
+List<Integer> b = new ArrayList<>(new LinkedHashSet<>(a));// Use LinkedHashSet to remove duplicates while preserving order
+System.out.println(b); // [1, 2, 3, 4, 5, 6] - final list without duplicates
+
+List<Integer> uniqueNumbers = a.stream()
+        .distinct() // Use distinct() to filter out duplicates
+        .collect(java.util.stream.Collectors.toList()); // Collect the result back into a list
+System.out.println(uniqueNumbers); // [1, 2, 3, 4, 5, 6] - final list without duplicates
+
+List<Integer> un = new ArrayList<>();
+for(Integer num:a){
+    if(!un.contains(num)){ // Check if the number is already in the new list
+        un.add(num); // If not, add it to the new list
+    }
+}
+System.out.println(un); // [1, 2, 3, 4, 5, 6] - final list without duplicates
+
+// count vowels consonants  spl chars in string $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+String input = "Automation Test Engineer 12324 %%&^*";
+
+int vowelCount = 0;
+int consonantCount = 0;
+int specialCharCount = 0;
+
+for (char c : input.toCharArray()) {
+    if (Character.isLetter(c)) { // Check if the character is a letter
+        char lowerC = Character.toLowerCase(c); // Convert to lowercase for uniformity
+        if ("aeiou".indexOf(lowerC) != -1) { // Check if it's a vowel - if not found, indexOf returns -1
+            vowelCount++;
+        } else { // If it's a letter but not a vowel, it's a consonant
+            consonantCount++;
+        }
+    } else if (!Character.isWhitespace(c)) { // Ignore whitespace characters
+        specialCharCount++; // Count special characters
+    }
+}
+System.out.println("Vowels: " + vowelCount);
+System.out.println("Consonants: " + consonantCount);
+System.out.println("Special Characters: " + specialCharCount);
+
+// Find longest substring without repeating characters in that string $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$       
+
+String input = "pwwkew";
+
+int maxLength = 0;
+int start = 0; // Start index of the current substring  
+ for (int end = 0; end < input.length(); end++) {
+    char currentChar = input.charAt(end);
+    int indexInSubstring = input.indexOf(currentChar, start); // Find the index of the current character in the substring starting from 'start'
+    
+    if (indexInSubstring != -1) { // If the character is found in the current substring
+        start = indexInSubstring + 1; // Move the start to the next character after the found character
+    }
+    
+    maxLength = Math.max(maxLength, end - start + 1); // Update maxLength if the current substring is longer
+    System.out.println("Current substring: " + input.substring(start, end + 1)); // [p, w, k, e] Print the current substring without repeating characters
+
+    // count occurence of each word  $$$$$$$$$$$$$$$$$$$$
+
+String a = "I am Test Engineer in Test AI" ;
+
+    Map<String, Integer> m = new LinkedHashMap<>();
+
+    String[] b = a.split(" ");
+
+    for (String c : b) {
+        m.put(c, m.getOrDefault(c, 0) + 1);
+    }
+
+    for (Map.Entry<String, Integer> e : m.entrySet()) { 
+        System.out.println(e.getKey() + "-" + e.getValue()); // I-1 am-1 Test-2 Engineer-1 in-1 AI-1
+    }
+
+    //Check whether one string is a rotation of another.
+
+       if (s1 == null || s2 == null) {
+            return false;
+        }
+
+        if (s1.length() != s2.length()) {
+            return false;
+        }
+
+        return (s1 + s1).contains(s2); // 
+    }
+
+    public static void main(String[] args) {
+
+        System.out.println(isRotation("ABCD", "CDAB"));  //true
+        System.out.println(isRotation("ABCD", "BCDA")); // true
+        System.out.println(isRotation("ABCD", "CDAB")); // true
+        System.out.println(isRotation("ABCD", "ACBD")); //false
+        System.out.println(isRotation("ABCD", "ABCDE"));// false
+    }
+}
+
+
+
+    

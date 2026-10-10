@@ -1,0 +1,22 @@
+// appium - context switch - web to native $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+Set<String> contexts =
+    driver.getContextHandles();
+
+for (String context : contexts) {
+    System.out.println(context);
+}
+// switch to webview context
+driver.context(
+    "WEBVIEW_com.example"
+);
+// switch to native context local app
+driver.context("NATIVE_APP");
+
+// start appium server programmatically $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+AppiumDriverLocalService service =
+    new AppiumServiceBuilder()
+        .build();
+
+service.start();

@@ -1,0 +1,12 @@
+class BaseTest {
+    String browser = "Chrome";
+}
+
+class LoginTest extends BaseTest {
+    String browser = "Firefox";
+
+    void printBrowsers() {
+        System.out.println(this.browser);  // Firefox
+        System.out.println(super.browser); // Chrome
+    }
+}
