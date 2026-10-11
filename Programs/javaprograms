@@ -568,7 +568,7 @@ int start = 0; // Start index of the current substring
 
 String a = "I am Test Engineer in Test AI" ;
 
-    Map<String, Integer> m = new LinkedHashMap<>();
+    Map<String, Integer> m = new LinkedHashMap<>(); 
 
     String[] b = a.split(" ");
 
@@ -590,7 +590,7 @@ String a = "I am Test Engineer in Test AI" ;
             return false;
         }
 
-        return (s1 + s1).contains(s2); // 
+        return (s1 + s1).contains(s2);  // 
     }
 
     public static void main(String[] args) {
@@ -600,6 +600,66 @@ String a = "I am Test Engineer in Test AI" ;
         System.out.println(isRotation("ABCD", "CDAB")); // true
         System.out.println(isRotation("ABCD", "ACBD")); //false
         System.out.println(isRotation("ABCD", "ABCDE"));// false
+    }
+}
+// Second largest distinct number in list
+
+public class SecondLargest {
+
+    public static Integer findSecondLargest(List<Integer> nums) {
+        Integer largest = null;
+        Integer secondLargest = null;
+
+        for (Integer num : nums) { 
+            if (num == null) {
+                continue;
+            }
+
+            if (largest == null || num > largest) {
+                secondLargest = largest;
+                largest = num;
+            } else if (num < largest &&
+                       (secondLargest == null || num > secondLargest)) {
+                secondLargest = num;
+            }
+        }
+
+        return secondLargest;
+    }
+
+    public static void main(String[] args) {
+        List<Integer> nums = Arrays.asList(10, 5, 20, 20, 8, 15);
+
+        Integer result = findSecondLargest(nums);
+
+        if (result == null) {
+            System.out.println("Second largest distinct number does not exist");
+        } else {
+            System.out.println("Second largest: " + result);
+        }
+    }
+}
+
+// Count vowels and consonants
+
+public class VowelConsonantCount {
+    public static void main(String[] args) {
+        String input = "Automation QA";
+        int vowels = 0;
+        int consonants = 0;
+
+        for (char ch : input.toLowerCase().toCharArray()) {
+            if (ch >= 'a' && ch <= 'z') {
+                if ("aeiou".indexOf(ch) >= 0) { // charater
+                    vowels++;
+                } else {
+                    consonants++;
+                }
+            }
+        }
+
+        System.out.println("Vowels: " + vowels); 
+        System.out.println("Consonants: " + consonants);
     }
 }
 

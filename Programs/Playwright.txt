@@ -1,0 +1,1014 @@
+Playwright Interview Preparation: 10 Real-World Scenario Questions and Answers
+These are senior-level Playwright automation interview questions. For your interview preparation,
+focus on three things for every scenario: the solution, the technical implementation, and why you
+chose that approach.I'll use Playwright with Python and pytest for the code examples.
+ The same concepts apply to Playwright with JavaScript/TypeScript, with syntax differences.
+
+1. How would you automate a login flow that uses SSO, OTP, or MFA in Playwright?
+Interview answer:
+I would first understand the authentication mechanism and determine whether the objective is to
+validate the complete authentication flow or test the application after authentication.
+- SSO: Use a dedicated test identity and automate the identity provider when end-to-end authentication
+testing is required.- OTP/MFA: Use an approved test-environment authentication mechanism, such as a
+test OTP provider, identity-provider test policy, or test-only authentication hook.
+- Session reuse: For most functional tests, authenticate once and reuse the Playwright storage state.
+- Security: Never hardcode production credentials, bypass production MFA, or commit authentication
+tokens to source control.
+
+Example A: Reuse an authenticated session
+# conftest.pyimport pytestfrom playwright.sync_api import sync_playwright
+@pytest.fixture(scope="session")
+def browser_context():
+with sync_playwright() as p:
+   browser = p.chromium.launch(headless=True)
+    context = browser.new_context( storage_state="auth_state.json"        )
+     yield context        context.close()        browser.close()
+
+
+
+Generate the state through an approved login setup script:
+from playwright.sync_api import sync_playwrightwith sync_playwright() as p:    browser = p.chromium.launch(headless=True)    page = browser.new_page()    page.goto("https://test.example.com/login")    page.get_by_label("Username").fill("test-user")    page.get_by_label("Password").fill("test-password")    page.get_by_role("button", name="Sign in").click()    page.get_by_role("heading", name="Dashboard").wait_for()    page.context.storage_state(path="auth_state.json")    browser.close()
+
+
+
+The credentials are illustrative; in a real framework, read them from environment variables or a secret manager.
+Important: If authentication depends on an external identity provider, the setup script must complete the actual SSO/MFA flow before saving the state. The example assumes that login completes without additional interactive challenges.
+Example B: Validate an OTP field
+def test_otp_login(page, test_otp):    page.goto("https://test.example.com/login")    page.get_by_label("Username").fill("test-user")    page.get_by_label("Password").fill("test-password")    page.get_by_role("button", name="Sign in").click()    page.get_by_label("One-time password").fill(test_otp)    page.get_by_role("button", name="Verify").click()    page.get_by_role("heading", name="Dashboard").wait_for()    assert page.get_by_role(        "heading", name="Dashboard"    ).is_visible()
+
+
+
+Here, test_otp is supplied by an approved test fixture or authentication service.
+Real-world example: In an airline booking application, I would reuse an authenticated test session for ordinary booking and check-in tests, but retain separate end-to-end tests that validate SSO, MFA challenges, invalid OTPs, and expired sessions.
+Senior-level follow-up: Storage state may contain cookies and tokens. Protect it as a secret, exclude it from Git, and create isolated sessions when testing roles or permissions.
+
+2. Your Playwright tests pass locally but fail in CI/CD. How would you investigate and fix this?
+Interview answer:
+I would not immediately add retries or increase every timeout. I would identify whether the failure is caused by the environment, synchronization, test data, browser dependencies, parallel execution, or application behavior.
+My debugging sequence
+1. Reproduce: Run the same browser, headless mode, test data, and command locally.
+2. Inspect evidence: Review the stack trace, screenshot, trace, console output, and network failures.
+3. Check the environment: Compare browser versions, Playwright versions, operating system, installed dependencies, secrets, and environment variables.
+4. Check synchronization: Replace fixed sleeps with locator assertions and condition-based waits.
+5. Check isolation: Look for shared accounts, reused records, race conditions, and tests that depend on execution order.
+6. Fix and verify: Re-run the failed test repeatedly and then run the full suite in CI.
+
+Code: Configure useful failure diagnostics
+# playwright.config.py is used in JavaScript/TypeScript,# so for Python use pytest.ini and pytest command options.
+
+
+
+For Python, enable tracing, screenshots, and video in your Playwright pytest configuration:
+# pytest.ini
+[pytest]
+addopts = --tracing retain-on-failure --screenshot only-on-failure --video retain-on-failure
+
+
+Run:
+pytest -v --headed
+
+
+Use --headed for local visual debugging when a display is available; CI normally runs headless.
+To collect CI diagnostics, run:
+pytest --tracing retain-on-failure \
+       --screenshot only-on-failure \
+       --video retain-on-failure
+
+
+These options are provided by the Playwright pytest plugin. Open the resulting trace to inspect the action timeline, DOM snapshots, and network activity.
+Common causes and fixes
+Problem	Correct fix
+Browser or OS mismatch	Install supported browser binaries and OS dependencies
+Element not ready	Use locator auto-waiting and web-first assertions
+Tests collide in parallel	Isolate accounts, records, and test data
+API is slower in CI	Wait for the actual response or UI state
+Missing secrets	Configure CI secret variables securely
+Random failures	Use traces and repeated runs to identify the root cause
+Real-world example: A booking test passes locally but fails in CI because the flight search results take longer to load. Instead of adding time.sleep(10), I would wait for the expected flight result or a loading indicator to disappear, then assert that the correct flight is visible.
+Key interview point: Retries can help identify flaky tests, but they do not fix the underlying defect.
+3. How do you handle dynamic elements when selectors keep changing frequently?
+Interview answer:
+I prefer stable, user-facing locators such as accessible roles, labels, and meaningful test IDs. I avoid brittle selectors based on generated CSS classes, absolute XPath, or DOM position.
+My approach is:
+1. Ask developers to provide stable data-testid attributes where necessary.
+2. Use Playwright's role, label, and text locators.
+3. Scope locators to a stable parent container.
+4. Use explicit conditions and assertions rather than arbitrary waits.
+5. If the application changes its DOM, update the locator based on the intended behavior.
+Example A: Use a stable test ID
+def test_add_to_cart(page):    page.goto("https://test.example.com/products")    page.get_by_test_id("product-card-101").get_by_role(        "button", name="Add to cart"    ).click()    assert page.get_by_test_id(        "cart-count"    ).inner_text() == "1"
+
+
+
+Here, get_by_test_id() is appropriate when the application exposes stable test IDs.
+Example B: Use a semantic locator
+page.get_by_role(    "button",    name="Continue",    exact=True).click()
+
+
+
+This is generally more robust than:
+page.locator(    "div.container > div:nth-child(3) > button").click()
+
+
+
+The second selector depends on the page's internal structure, which can change without changing the actual user workflow.
+Real-world example: An airline website generates different CSS classes for its flight cards after each build. I would locate a flight card using a stable flight identifier or test ID, then locate the booking button inside that card.
+Senior-level point: Playwright locators are designed to resolve elements at action time and support auto-waiting. Prefer a reliable locator over adding retries around a fragile selector.
+
+Playwright Python
++1
+
+
+
+
+4. If a page contains multiple elements with the same text, how do you interact with the correct one?
+Interview answer:
+I would scope the locator to a unique parent, use a more specific role or accessible name, and verify uniqueness when the element is expected to be unique. I would use .nth() only when the ordering itself is meaningful and stable.
+Example A: Scope to a particular card
+Suppose a page displays multiple flights, each with a Book now button.
+flight_card = page.get_by_test_id("flight-AB123")book_button = flight_card.get_by_role(    "button",    name="Book now",    exact=True)assert book_button.count() == 1book_button.click()
+
+
+
+This targets the button inside flight AB123, rather than the first Book now button on the page.
+Example B: Select by index when appropriate
+book_buttons = page.get_by_role(    "button",    name="Book now",    exact=True)assert book_buttons.count() == 3book_buttons.nth(1).click()
+
+
+
+This selects the second button using zero-based indexing.
+However, I would not use .nth(1) merely to silence a strict-mode error. If the second button represents a particular flight, I would rather identify that flight through a stable business identifier.
+Example C: Filter by meaningful content
+flight_card = page.locator(    "[data-testid='flight-card']").filter(has_text="AB123")flight_card.get_by_role(    "button",    name="Book now").click()
+
+
+
+Real-world example: If three products have the same Add to cart button, scope the button to the product name or product ID. This prevents accidentally adding the wrong product.
+Key interview point: Uniqueness should come from business meaning or page structure, not a guess about element order.
+
+5. An API call succeeds, but the UI updates late, causing test failures. How would you handle synchronization?
+Interview answer:
+I would distinguish between the API response and the UI's rendering process. A successful HTTP response does not guarantee that the frontend has processed the response, updated its state, and rendered the expected element.
+I would wait for the relevant response when needed, followed by a condition-based UI assertion. I would avoid fixed sleeps and use expect_response() only when I need to coordinate with the request itself.
+Example A: Wait for the API response and then verify the UI
+from playwright.sync_api import expectdef test_flight_search(page):    page.goto("https://test.example.com/flights")    page.get_by_label("Origin").fill("AUH")    page.get_by_label("Destination").fill("LHR")    with page.expect_response(        lambda response:            "/api/flights/search" in response.url            and response.request.method == "GET"    ) as response_info:        page.get_by_role(            "button", name="Search flights"        ).click()    response = response_info.value    assert response.status == 200    expect(        page.get_by_test_id("flight-results")    ).to_be_visible()    expect(        page.get_by_text("AB123", exact=True)    ).to_be_visible()
+
+
+
+This checks both the API result and the rendered flight result.
+Important: The URL pattern is illustrative. Match the actual endpoint and HTTP method used by the application.
+Example B: When only the UI outcome matters
+from playwright.sync_api import expectpage.get_by_role("button", name="Search flights").click()expect(    page.get_by_test_id("flight-results")).to_be_visible(timeout=10000)
+
+
+
+This is often enough when Playwright's auto-waiting and the web-first assertion cover the requirement.
+What I would avoid
+import timetime.sleep(5)
+
+
+
+A fixed sleep always waits for the specified duration, even if the page becomes ready earlier. It can also fail when the application takes longer than expected.
+Real-world example: The booking API returns a reservation reference immediately, but the frontend displays the confirmation card after updating its state. I would assert the actual confirmation card and reservation reference, not merely the API status code.
+Senior-level point: Do not blindly wait for networkidle on applications with polling, analytics, or persistent network connections. Wait for the specific business condition instead.
+
+Playwright Python
++1
+
+
+
+
+6. How would you implement and validate file upload and file download functionality using Playwright?
+Interview answer:
+For uploads, I would use Playwright's file-input APIs or file chooser event handling. For downloads, I would capture the download event, save the file, and validate the filename, existence, and contents. I would also test negative cases such as unsupported file types and file-size limits.
+Example A: File upload
+from pathlib import Pathfrom playwright.sync_api import expectdef test_upload_document(page):    page.goto("https://test.example.com/documents")    file_path = Path("tests/data/passport.pdf")    assert file_path.exists()    page.get_by_label("Upload document").set_input_files(        str(file_path)    )    expect(        page.get_by_text("passport.pdf")    ).to_be_visible()    page.get_by_role(        "button", name="Submit"    ).click()    expect(        page.get_by_text("Upload successful")    ).to_be_visible()
+
+
+
+This assumes the file input has an accessible label and the application shows a success message.
+Example B: File upload using a file chooser
+Use this approach when clicking a button opens the operating system's file picker.
+def test_upload_via_file_chooser(page):    page.goto("https://test.example.com/documents")    with page.expect_file_chooser() as chooser_info:        page.get_by_role(            "button", name="Choose file"        ).click()    chooser = chooser_info.value    chooser.set_files("tests/data/passport.pdf")
+
+
+
+Example C: File download and validation
+from pathlib import Pathdef test_download_report(page, tmp_path):    page.goto("https://test.example.com/reports")    with page.expect_download() as download_info:        page.get_by_role(            "link", name="Download report"        ).click()    download = download_info.value    assert download.suggested_filename == "report.csv"    saved_file = tmp_path / download.suggested_filename    download.save_as(saved_file)    assert saved_file.exists()    assert saved_file.stat().st_size > 0    content = saved_file.read_text(encoding="utf-8")    assert "booking_id" in content
+
+
+
+The example assumes a UTF-8 CSV report with a booking_id header. For PDFs, binary files, or other formats, I would use the appropriate parser or validation method.
+Real-world example: An airline customer uploads a passport scan during online check-in. I would test valid PDF/JPEG uploads, unsupported formats, oversized files, server rejection, and the correct association of the uploaded document with the passenger.
+For downloads, I would validate not only that a file was downloaded but also that its contents correspond to the selected booking or report.
+Senior-level point: Use pytest's tmp_path fixture to isolate generated files and avoid test collisions.
+
+Playwright Python
++1
+
+
+
+
+7. How would you design your Playwright tests to run across multiple browsers and devices?
+Interview answer:
+I would design a browser-independent test suite using reusable page objects, shared test data, and isolated browser contexts. I would configure separate execution profiles for Chromium, Firefox, WebKit, desktop viewports, and mobile device emulation.
+I would also distinguish between browser coverage and real-device coverage: mobile emulation tests viewport, touch behavior, and certain device settings, but it does not replace testing on physical devices.
+Example A: Cross-browser testing with Python and pytest
+# conftest.pyimport pytestfrom playwright.sync_api import sync_playwright@pytest.fixture(params=["chromium", "firefox", "webkit"])def page(request):    with sync_playwright() as p:        browser_type = getattr(p, request.param)        browser = browser_type.launch(headless=True)        context = browser.new_context(            viewport={"width": 1365, "height": 768}        )        page = context.new_page()        yield page        context.close()        browser.close()
+
+
+
+Every test using this fixture runs against all three configured browser engines.
+Install the supported browser binaries before execution:
+playwright install
+
+
+On Linux CI environments, install required operating-system dependencies as well:
+playwright install --with-deps
+
+
+Example B: Mobile emulation
+import pytestfrom playwright.sync_api import sync_playwright@pytest.fixturedef mobile_page():    with sync_playwright() as p:        iphone = p.devices["iPhone 13"]        browser = p.chromium.launch(headless=True)        context = browser.new_context(**iphone)        page = context.new_page()        yield page        context.close()        browser.close()
+
+
+
+Use mobile_page in a test to exercise the mobile layout.
+How I would organize the test strategy
+Test category	Execution strategy
+Critical smoke tests	All supported browser engines
+Full regression	Parallel execution across selected browsers
+Responsive UI	Desktop, tablet, and mobile viewports
+Mobile-specific behavior	Device emulation plus real-device tests where needed
+Accessibility	Automated checks and targeted manual validation
+Real-world example: In an airline booking portal, I would validate flight search and booking confirmation across Chromium, Firefox, and WebKit. I would additionally verify that the mobile booking flow works at a small viewport and that passenger details remain usable on touch-enabled screens.
+Senior-level point: Run tests in parallel only when their data and accounts are isolated. A cross-browser test suite is not reliable if different workers modify the same booking.
+
+8. If the backend is unstable, how would you mock or intercept API responses in Playwright?
+Interview answer:
+I would intercept the relevant API request and return a controlled response. This allows UI tests to remain deterministic while the backend is unstable or while I need to test scenarios that are difficult to reproduce.
+I would use mocks for frontend behavior and error-state coverage, but keep separate integration and end-to-end tests against the real backend.
+Example A: Mock a successful flight search
+def test_flight_search_with_mock(page):    def mock_flights(route):        route.fulfill(            status=200,            content_type="application/json",            json={                "flights": [                    {                        "flightNumber": "AB123",                        "price": 1200,                        "currency": "AED"                    }                ]            }        )    page.route("**/api/flights/search", mock_flights)    page.goto("https://test.example.com/flights")    page.get_by_role(        "button", name="Search flights"    ).click()    assert page.get_by_text(        "AB123", exact=True    ).is_visible()    assert page.get_by_text(        "AED 1200", exact=True    ).is_visible()
+
+
+
+The response schema and displayed price are illustrative and should match the actual application.
+Example B: Mock a server error
+def test_flight_search_server_error(page):    page.route(        "**/api/flights/search",        lambda route: route.fulfill(            status=500,            content_type="application/json",            json={"message": "Internal server error"}        )    )    page.goto("https://test.example.com/flights")    page.get_by_role(        "button", name="Search flights"    ).click()    assert page.get_by_text(        "Unable to load flights"    ).is_visible()
+
+
+
+Example C: Simulate a network failure
+def test_network_failure(page):    page.route(        "**/api/flights/search",        lambda route: route.abort()    )    page.goto("https://test.example.com/flights")    page.get_by_role(        "button", name="Search flights"    ).click()    assert page.get_by_text(        "Something went wrong"    ).is_visible()
+
+
+
+Which scenarios would I mock?
+- Successful responses with known data.
+- Empty search results.
+- HTTP 400 validation errors.
+- HTTP 401 or 403 authentication and authorization failures.
+- HTTP 500 server errors.
+- Network timeouts and aborted requests.
+- Delayed responses and loading indicators.
+Real-world example: The flight-pricing service is intermittently unavailable. I can still test that the frontend displays an error message, offers a retry action, and does not show stale prices by mocking the relevant response.
+Senior-level point: A mock can hide backend defects if it is used for every test. I would retain a smaller set of real API and end-to-end tests to validate actual contracts and integrations.
+
+Playwright Python
++1
+
+
+
+
+9. How would you capture and assert console errors or failed network calls during test execution?
+Interview answer:
+I would register event listeners before performing the action under test. I would capture JavaScript console errors, uncaught page errors, and failed requests. Where appropriate, I would also inspect HTTP responses for server errors.
+I would distinguish between a network request that failed to reach the server and a request that reached the server but returned an HTTP error.
+Example: Capture and assert browser errors
+def test_page_has_no_unexpected_errors(page):    console_errors = []    page_errors = []    failed_requests = []    server_errors = []    page.on(        "console",        lambda msg: console_errors.append(msg.text)        if msg.type == "error" else None    )    page.on(        "pageerror",        lambda error: page_errors.append(str(error))    )    page.on(        "requestfailed",        lambda request: failed_requests.append(            f"{request.method} {request.url}: "            f"{request.failure}"        )    )    page.on(        "response",        lambda response: server_errors.append(            f"{response.status} {response.url}"        )        if response.status >= 500 else None    )    page.goto("https://test.example.com")    page.get_by_role("link", name="Flights").click()
+
+
+
+This strict example assumes the tested flow should have no such errors. In a real application, I would filter known, approved exceptions rather than fail the suite because of unrelated analytics or intentionally aborted requests.
+Important distinctions
+Event	Meaning
+console	Browser console messages, including JavaScript console errors
+pageerror	Uncaught JavaScript exceptions on the page
+requestfailed	A request failed at the network or browser-request level
+response with status 500	An HTTP response was received with a server-error status
+A 404 or 500 response is not automatically a requestfailed event: the server may have successfully returned that HTTP response.
+Real-world example: A booking confirmation page appears correct, but the browser logs an uncaught JavaScript exception after the payment response. I would fail the relevant test, preserve the diagnostics, and investigate whether the error affects confirmation rendering or subsequent user actions.
+Senior-level point: Register listeners before navigation or the action being investigated, or early events may be missed. Also avoid indiscriminately treating every console message as a product defect; define meaningful failure criteria.
+
+10. Your Playwright test suite has become slow and flaky. What steps would you take to optimize it?
+Interview answer:
+I would measure the suite before making changes. I would separate genuine application defects from test instability and then optimize the biggest sources of wasted time.
+My approach would cover test isolation, authentication, synchronization, parallel execution, network dependencies, locator reliability, and reporting.
+Step 1: Identify slow and flaky tests
+Run the suite with timing and detailed output:
+pytest -v --durations=20
+
+
+This identifies the 20 slowest test calls.
+For tests that fail intermittently, use controlled repeat runs or a rerun plugin to quantify the failure rate. I would not treat a passing retry as proof that the test is fixed.
+Step 2: Remove unnecessary waits
+Avoid:
+import timetime.sleep(5)
+
+
+
+Prefer:
+from playwright.sync_api import expectexpect(    page.get_by_test_id("booking-confirmation")).to_be_visible(timeout=10000)
+
+
+
+The assertion waits for the expected condition rather than blindly sleeping.
+Step 3: Reuse authentication where appropriate
+Authenticate once using an approved setup process and reuse storage state for tests that can safely share the same identity.
+This avoids repeating a lengthy SSO flow in every test. Tests that modify shared data should use isolated accounts or worker-specific authentication state.
+
+Playwright Python
++1
+
+
+
+Step 4: Run independent tests in parallel
+For example, divide tests into smoke, regression, and browser-specific groups. Run independent tests in parallel while ensuring that test data, accounts, and output files do not collide.
+Parallelism should be increased gradually because excessive concurrency can overload the application or database and create new failures.
+Step 5: Mock expensive dependencies selectively
+Use deterministic API mocks for frontend-only scenarios, and reserve real backend calls for integration tests. Avoid making every UI test depend on a slow third-party service.
+Step 6: Improve test architecture
+- Use page objects or reusable fixtures for common workflows.
+- Keep each test focused on one business behavior.
+- Create and clean up test data predictably.
+- Use stable locators.
+- Capture traces, screenshots, and logs on failure.
+- Remove redundant tests that provide no additional coverage.
+- Keep retries as a diagnostic mechanism, not a substitute for fixing defects.
+Example: Reusable fixture with isolated test pages
+# conftest.pyimport pytestfrom playwright.sync_api import sync_playwright@pytest.fixturedef page():    with sync_playwright() as p:        browser = p.chromium.launch(headless=True)        context = browser.new_context()        page = context.new_page()        yield page        context.close()        browser.close()
+
+
+
+This provides a fresh browser context for each test using the fixture, preventing cookies and local storage from leaking between tests. For larger suites, I would use a more optimized shared-browser fixture while retaining per-test context isolation.
+Example: Parallel execution
+Install pytest-xdist:
+pip install pytest-xdist
+
+
+Execute tests using four workers:
+pytest -n 4
+
+
+I would first verify that the tests are independent and that the environment can support four concurrent workers.
+How I would measure improvement
+Metric	What I would monitor
+Total execution time	Whether the suite finishes faster
+Flaky-test rate	How often tests fail intermittently
+Retry rate	Whether failures are being masked by retries
+Failure diagnosis time	How quickly the root cause can be identified
+Coverage	Whether critical business flows remain tested
+Real-world example: An airline regression suite takes 45 minutes and frequently fails on flight search. I discover that many tests repeat SSO login, rely on fixed sleeps, and use the same booking account. I would reuse safe authentication state, replace sleeps with condition-based assertions, isolate booking data, and parallelize independent tests. I would compare execution time and flaky-test rate before and after the changes.
+Senior-level point: My goal is not merely to make the suite faster. It is to make it faster, deterministic, diagnosable, and trustworthy.
+
+Final interview revision: What to remember
+10-point revision checklist
+0/10 reviewed
+
+1. SSO / MFA2. CI/CD failures3. Dynamic selectors4. Duplicate elements5. API/UI synchronization6. Files7. Cross-browser8. Mocking9. Browser errors10. OptimizationReveal all answers
+For official reference material, use the Playwright Python documentation, particularly its guides on authentication, network interception, and browser contexts.
+My recommendation for your interview: Practise explaining each answer aloud using this structure: problem → root cause → implementation → validation → trade-offs. At a senior SDET level, interviewers want to hear not just which Playwright API you know, but why your solution is reliable in CI/CD and in a real production-like application.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2. What are the advantages of Playwright?
+3. What are the disadvantages of Playwright?
+4. Which programming languages are supported by Playwright?
+5. What types of tests does Playwright support?
+6. How do Selenium and Playwright differ?
+7. How to setup & install Playwright?
+8. How to setup a new Playwright project?
+9. Does Playwright require a Webdriver dependency?
+10. Can you describe Playwright's architecture?
+11. How does Playwright differ from other testing frameworks?
+12. What is a configuration file in Playwright?
+13. What is the typical configuration file name in Playwright?
+14. What is the @playwright/test Package in Playwright?
+15. What is the Page Class in Playwright?
+16. How to navigate to specific URLs in Playwright?
+17. What types of reporters does Playwright support?
+18. What are Locators in Playwright? Name some of the Locators in Playwright.
+19. What types of text selectors does Playwright offer?
+20. List out some assertions in Playwright.
+21. How to use assertions in Playwright?
+22. What are hard assertions and soft assertions in Playwright?
+23. Does Playwright support XPath? How can you implement XPath in your tests?
+24. Does Playwright support HTML reporters? How to generate HTML reports in Playwright?
+25. What is the difference between Playwright and Selenium?
+
+Advanced Playwright Interview Questions
+1. What common challenges have you encountered while using Playwright, and how did you address them?
+2. How to wait for a specific element in Playwright?
+3. Can you run tests in parallel in Playwright?
+4. In what ways does Playwright manage browser automation and testing?
+5. How does Playwright handle asynchronous operations? Give an example.
+6. What are the best methods for debugging tests in Playwright?
+7. What are the best practices for writing efficient and maintainable tests using Playwright?
+8. What are some best practices for using locators effectively in Playwright?
+9. What common errors might you encounter with Playwright, and how can you effectively troubleshoot them?
+10. What are Headed and Headless modes in Playwright?
+11. What measures does Playwright take to guarantee cross-browser compatibility?
+12. How does Playwright integrate with Continuous Integration (CI) tools?
+13. Does Playwright include built-in reporting?
+14. What are timeouts in Playwright?
+15. What are the different types of timeouts available in Playwright?
+16. How to navigate forward and backward in Playwright?
+17. How to perform actions using Playwright?
+18. Does Playwright support Safari browser?
+19. How to execute Playwright tests on Safari browser?
+20. Can you use Playwright to scrape dynamic websites?
+
+
+
+
+
+
+
+
+
+
+
+
+
+Playwright Interview Questions and Answers — Complete Preparation Guide
+Meghu, below is your interview-ready guide covering all 45 questions across Playwright fundamentals and advanced concepts, with Python examples using Playwright + pytest. I’ll also point out where interviewers expect you to distinguish Python Playwright from the JavaScript/TypeScript @playwright/test framework.
+Part 1 — Basic Playwright Interview Questions
+2. What are the advantages of Playwright?
+Answer: Playwright is a modern browser automation framework that offers reliable, cross-browser testing with built-in synchronization and powerful debugging tools.
+Key advantages:
+1. Auto-waiting: Waits for elements to become actionable before performing supported actions.
+2. Cross-browser support: Chromium, Firefox, and WebKit.
+3. Multiple languages: JavaScript, TypeScript, Python, Java, and .NET.
+4. Fast execution: Supports parallel testing and efficient browser contexts.
+5. Network interception: Can mock APIs, inspect requests, and simulate failures.
+6. Multiple tabs: Supports popups, multiple pages, and browser contexts.
+7. Debugging: Offers traces, screenshots, videos, and Inspector tools.
+8. Authentication reuse: Can save and restore browser storage state.
+9. Modern web support: Handles SPAs, dynamic content, and asynchronous interfaces.
+10. CI/CD integration: Works with common pipeline systems.
+Real-world example: For an airline application, I can search flights, intercept a pricing API, validate a booking confirmation, and run the same tests across Chromium, Firefox, and WebKit.
+3. What are the disadvantages of Playwright?
+Answer: Although Playwright is powerful, it has limitations that need to be considered when designing an automation framework.
+- Learning curve: Modern locator strategies, contexts, fixtures, and asynchronous behavior require practice.
+- Legacy-browser limitations: It does not provide the same breadth of legacy browser support as some Selenium-based setups.
+- Real-device limitations: Browser emulation does not replace physical-device testing.
+- Third-party authentication: SSO and MFA flows may require special test-environment configuration.
+- Test maintenance: Poor selectors and tightly coupled tests can still be flaky.
+- Language-specific differences: The official test runner is designed for JavaScript/TypeScript; Python users commonly use pytest.
+- Environment setup: Browser binaries and Linux dependencies must be installed correctly in CI.
+- Application-specific constraints: Captchas, hardware-dependent workflows, and native application interactions may require other tools or dedicated test hooks.
+Interview tip: Avoid saying Playwright is unreliable. Explain that most automation problems arise from unstable application behavior, weak test design, or environmental differences rather than the tool alone.
+4. Which programming languages are supported by Playwright?
+Playwright provides official language libraries for:
+Language	Common usage
+JavaScript	Browser automation and testing
+TypeScript	Browser automation and testing
+Python	Automation with pytest or unittest
+Java	Enterprise test automation
+.NET / C#	Microsoft ecosystem and enterprise testing
+Example in Python:
+Interview distinction: @playwright/test is the official JavaScript/TypeScript test runner package. Python projects normally use the pytest-playwright plugin with pytest.
+5. What types of tests does Playwright support?
+Playwright can be used to automate:
+- UI and functional testing: Buttons, forms, navigation, and user workflows.
+- End-to-end testing: Complete user journeys across frontend and backend services.
+- Regression testing: Verifying existing functionality after changes.
+- Smoke testing: Quickly checking critical application functions.
+- API testing: Sending HTTP requests and validating responses.
+- Visual testing: Comparing screenshots and visual states.
+- Cross-browser testing: Running tests on supported browser engines.
+- Responsive testing: Checking layouts at different viewport sizes.
+- Authentication testing: Login, logout, session expiration, and access control.
+- File testing: Uploads and downloads.
+- Network and error testing: Mocking responses, failures, and latency.
+- Accessibility checks: Integrating accessibility tools to identify potential issues.
+Important: Playwright is not a complete replacement for dedicated load-testing, security-testing, or native-mobile automation tools. Those typically require complementary tools.
+6. How do Selenium and Playwright differ?
+Answer: Selenium uses the WebDriver standard to automate browsers. Playwright uses browser-specific automation protocols and its own automation architecture to provide features such as auto-waiting, isolated contexts, and network interception.
+Feature	Playwright	Selenium
+Automation mechanism	Browser-specific automation protocols	WebDriver standard
+Browser support	Chromium, Firefox, WebKit	Broad browser ecosystem
+Auto-waiting	Built into locator actions	Usually implemented with explicit waits and conditions
+Browser contexts	Lightweight isolated contexts	Commonly isolated through separate sessions/profiles
+Network interception	Built-in routing and response handling	Depends on browser, driver, and Selenium capabilities
+Multiple tabs	Supported	Supported
+Parallel execution	Supported	Supported through test runners and Grid
+Mobile testing	Browser emulation	Can integrate with Appium for native mobile testing
+Test runner	Official runner for JS/TS; external runner options for other languages	External test runners such as pytest, JUnit, and TestNG
+Legacy browser coverage	More limited	Broader options depending on the ecosystem
+When would I choose Playwright? For a new web application requiring fast feedback, modern browser support, API mocking, and strong debugging capabilities.
+When would I choose Selenium? When an organization has a mature Selenium Grid, extensive existing test assets, or specific browser and infrastructure requirements.
+7. How do you set up and install Playwright?
+For your Python and pytest workflow, I would use VS Code and a virtual environment.
+Step 1: Create a project directory
+Step 2: Create and activate a virtual environment
+Windows:
+Step 3: Install the packages
+Step 4: Install browser binaries
+For Linux CI environments:
+Step 5: Verify installation
+Create a basic test:
+Run it:
+8. How do you set up a new Playwright project?
+I would organize the project so that tests, page objects, test data, configuration, and reports are separated.
+playwright-python-project/
+
+ tests/
+
+test_login.py
+test_flight_search.py
+
+ pages/
+
+login_page.py
+flight_search_page.py
+
+ test_data/
+
+ reports/
+
+ conftest.py
+
+ pytest.ini
+
+ requirements.txt
+
+ .gitignore
+
+
+
+Example page object:
+Example test:
+In a real project, I would retrieve credentials from environment variables or a secret manager rather than hardcoding them.
+9. Does Playwright require a WebDriver dependency?
+Answer: No. Playwright does not require a separate WebDriver executable such as ChromeDriver or GeckoDriver.
+Playwright installs and manages compatible browser binaries through its browser installation commands and communicates with those browsers using its own automation mechanisms.
+For example:
+This installs the Chromium browser build required by the installed Playwright version.
+Contrast: Traditional Selenium setups often require a browser driver, although Selenium Manager can automatically manage compatible drivers in modern Selenium releases.
+10. Can you describe Playwright's architecture?
+Answer: Playwright consists of a client library, browser-specific automation communication, and browser processes. Its test integration provides additional facilities such as fixtures, assertions, reporting, and parallel execution.
+A simplified architecture is:
+Test code
+pytest + Playwright Python
+
+Playwright client library
+Locators, actions, waits, events
+
+Browser-specific automation communication
+
+Chromium
+
+
+Firefox
+
+
+WebKit
+
+
+
+
+Important: This is a conceptual diagram, not a literal process topology. Communication details differ across browser engines and language implementations.
+Other important components include:
+- Browser: The launched browser process.
+- Browser context: An isolated session with its own cookies, local storage, and related state.
+- Page: A browser tab or page target within a context.
+- Locator: A query for finding and interacting with elements.
+- Test runner: In Python, pytest plus the Playwright plugin; in TypeScript, @playwright/test.
+11. How does Playwright differ from other testing frameworks?
+Answer: Playwright combines browser automation with reliable locator actions, auto-waiting, browser contexts, and network interception.
+Compared with common alternatives:
+- Selenium: Playwright provides built-in auto-waiting and convenient network mocking; Selenium has a broader WebDriver ecosystem.
+- Cypress: Playwright supports multiple browser engines and language bindings beyond JavaScript/TypeScript.
+- Puppeteer: Puppeteer focuses primarily on browser automation, especially Chromium; Playwright offers broader cross-browser capabilities and a more comprehensive testing ecosystem.
+The best choice depends on the application's browser requirements, existing framework, language, and CI infrastructure.
+12. What is a configuration file in Playwright?
+Answer: A configuration file defines how a test suite should run. It can specify browsers, test directories, timeouts, retries, parallelism, reporters, base URLs, and artifact collection.
+For JavaScript/TypeScript:
+This example is for the JavaScript/TypeScript runner, not Python pytest.
+For Python, configure pytest using pytest.ini, pyproject.toml, conftest.py, and pytest command-line options.
+13. What is the typical configuration file name in Playwright?
+The standard configuration filename for the official JavaScript/TypeScript test runner is:
+playwright.config.ts
+Other common forms are:
+- playwright.config.js
+- playwright.config.mjs
+- playwright.config.cjs
+Python equivalent: pytest.ini is a common pytest configuration file, while conftest.py defines fixtures and hooks. Neither is the same as playwright.config.ts.
+14. What is the @playwright/test package?
+Answer: @playwright/test is Playwright's official JavaScript/TypeScript test runner package.
+It provides:
+- Test definitions using test().
+- Assertions using expect().
+- Fixtures such as page, context, and browser.
+- Parallel execution and retries.
+- Configuration projects for different browsers.
+- Reporters, tracing, and debugging support.
+Example:
+For Python, the comparable setup is generally Playwright Python + pytest + pytest-playwright.
+15. What is the Page class in Playwright?
+Answer: The Page class represents a browser page or tab. It provides methods for navigation, interaction, locating elements, listening to events, and inspecting page state.
+Example:
+Frequently used methods include:
+Method	Purpose
+page.goto()	Navigate to a URL
+page.locator()	Find elements
+page.get_by_role()	Locate by accessible role
+page.get_by_text()	Locate by text
+page.screenshot()	Capture a screenshot
+page.reload()	Reload the page
+page.go_back()	Navigate backward
+page.go_forward()	Navigate forward
+page.on()	Register event listeners
+16. How do you navigate to specific URLs in Playwright?
+Use page.goto().
+You can also use a configured base URL:
+This relative URL requires the base URL to be configured in the browser context or pytest Playwright setup.
+Interview point: page.goto() waits according to the selected navigation lifecycle option. A completed navigation does not necessarily mean that all application data has finished loading.
+17. What types of reporters does Playwright support?
+The JavaScript/TypeScript Playwright test runner includes built-in reporters such as:
+- list
+- line
+- dot
+- html
+- json
+- junit
+- github
+- blob
+Example:
+For Python, pytest provides its own reporting mechanisms and plugins. For example, install pytest-html for an HTML report:
+18. What are locators in Playwright? Name some locators.
+Answer: A locator identifies elements on a page and allows Playwright to perform actions and assertions against them. Locators are generally resolved when an action runs, helping them work with dynamically updated DOMs.
+Common locators include:
+My preferred order is generally:
+1. Accessible role and name.
+2. Associated label or placeholder where appropriate.
+3. Stable test ID.
+4. CSS selectors where justified.
+5. XPath when needed for a particular DOM structure.
+A locator should express what element the test intends to interact with, not merely how the element happens to be positioned.
+19. What types of text selectors does Playwright offer?
+Playwright offers several ways to find text or elements based on their visible text and semantics.
+Exact text matching:
+Partial text matching:
+Role and accessible name:
+Text locator using CSS-style syntax:
+The legacy text-selector syntax is supported, but the dedicated get_by_text() API is generally clearer.
+Interview distinction: get_by_role() uses an element's accessible role and name, whereas get_by_text() searches for text content. They are not interchangeable in every situation.
+20. List some assertions in Playwright.
+In Python, the Playwright pytest plugin supports Playwright's web-first expect() assertions.
+Assertion	Purpose
+to_be_visible()	Element is visible
+to_be_hidden()	Element is hidden
+to_be_enabled()	Element is enabled
+to_be_disabled()	Element is disabled
+to_have_text()	Text matches the expected value
+to_contain_text()	Text contains the expected value
+to_have_value()	Input value matches
+to_have_attribute()	Attribute matches
+to_have_count()	Locator matches the expected number of elements
+to_have_url()	Page URL matches
+to_have_title()	Page title matches
+Example:
+21. How do you use assertions in Playwright?
+Answer: I use assertions to verify actual behavior against expected business requirements. For web UI conditions, I prefer Playwright's web-first assertions because they retry until the condition passes or the assertion times out.
+Example:
+The first assertion validates the visible dashboard heading; the second validates navigation to the expected URL.
+Avoid checking an element's state once with a plain Boolean expression when the state may not yet be ready.
+22. What are hard assertions and soft assertions in Playwright?
+Hard assertion: Stops the test immediately when an assertion fails.
+If this assertion fails, execution stops at that point.
+Soft assertion: Records an assertion failure but allows the test to continue, where the framework supports soft assertions.
+In the official JavaScript/TypeScript runner:
+This allows both checks to run and reports the soft failures at the end of the test.
+Python distinction: Playwright's Python expect() does not provide the same built-in expect.soft() API. In pytest, you can use a plugin such as pytest-check for soft checks, or collect validation failures and assert them together at the end.
+In production tests, use retrying assertions when the UI may update asynchronously; the simple inner_text() checks above are illustrative of collecting multiple failures, not a replacement for web-first assertions.
+23. Does Playwright support XPath? How do you implement it?
+Answer: Yes. Playwright supports XPath selectors, but I prefer role-based locators or stable test IDs when available.
+Example:
+You can also explicitly prefix the selector with xpath=:
+Why avoid excessive XPath? XPath expressions tied to DOM hierarchy can break when developers restructure the page. Prefer XPath only when it provides a clear advantage over a semantic locator.
+24. Does Playwright support HTML reports? How do you generate them?
+Answer: Yes. The official JavaScript/TypeScript test runner includes an HTML reporter. Python projects can generate HTML reports using the third-party pytest-html plugin.
+JavaScript/TypeScript:
+View the report:
+Python:
+The report can help identify passed and failed tests and provide diagnostic details, depending on the configured reporter and attached artifacts.
+For CI/CD, I would publish reports as pipeline artifacts so the team can inspect failures without rerunning the entire suite.
+25. What is the difference between Playwright and Selenium?
+This duplicates Question 6, so use the same comparison rather than memorizing a second answer.
+One-line interview response: Selenium is a WebDriver-based browser automation ecosystem with broad browser and infrastructure support; Playwright offers a modern automation API with built-in auto-waiting, isolated browser contexts, network interception, and integrated test-runner capabilities in its JavaScript/TypeScript ecosystem.
+
+Part 2 — Advanced Playwright Interview Questions
+1. What common challenges have you encountered while using Playwright, and how did you address them?
+Sample interview answer:
+In automation projects, common challenges include flaky tests, dynamic elements, authentication, slow APIs, parallel execution conflicts, and CI environment differences.
+Challenge	How I would address it
+Dynamic locators	Use accessible roles, stable test IDs, and scoped locators
+Delayed UI updates	Use auto-waiting and condition-based assertions
+SSO and MFA	Use approved authentication setup and protected storage state
+Backend instability	Mock selected endpoints and retain real integration tests
+Parallel conflicts	Isolate accounts, test records, and browser contexts
+CI-only failures	Inspect traces, logs, screenshots, versions, and environment variables
+Slow execution	Profile slow tests, remove fixed waits, and parallelize safely
+Example: A flight search test fails intermittently because results are rendered asynchronously. I inspect the trace, verify the API response, replace a fixed sleep with a web-first assertion, and confirm the test remains stable over repeated CI runs.
+Senior-level point: Explain the root cause and the evidence used to verify the fix. Do not claim a test is fixed merely because one rerun passes.
+2. How do you wait for a specific element in Playwright?
+Use a locator with a web-first assertion or an explicit locator wait, depending on the requirement.
+Preferred approach:
+Explicit wait:
+Available locator wait states include:
+- attached: Element exists in the DOM.
+- detached: Element is no longer attached to the DOM.
+- visible: Element is visible.
+- hidden: Element is hidden or detached.
+For normal interactions, Playwright automatically waits for actionability conditions, such as visibility, stability, and whether an element can receive events. Use explicit waits when they clarify a specific synchronization requirement.
+3. Can you run tests in parallel in Playwright?
+Answer: Yes. Parallelism depends on the language and test runner.
+For Python with pytest-xdist:
+This runs tests across four worker processes.
+For the JavaScript/TypeScript runner:
+Benefits:
+- Reduced total execution time.
+- Better use of CI resources.
+- Faster regression feedback.
+Risks:
+- Shared test data.
+- Account collisions.
+- Database contention.
+- Rate limits and overloaded test environments.
+- Tests that depend on execution order.
+Real-world example: I would assign separate test accounts or worker-specific booking references to parallel airline booking tests, preventing one test from changing data that another test is validating.
+4. In what ways does Playwright manage browser automation and testing?
+Playwright manages browser interaction through its language client and browser-specific automation mechanisms. The surrounding test framework provides test discovery, fixtures, assertions, retries, parallel execution, and reporting.
+Important mechanisms include:
+- Browser launch: Starts the selected browser engine.
+- Browser context: Isolates cookies and session state.
+- Page: Represents a tab.
+- Locators: Identify elements and support auto-waiting.
+- Events: Capture console messages, requests, responses, and downloads.
+- Network routing: Intercepts or modifies requests and responses.
+- Tracing: Captures action timelines and other diagnostic information.
+In Python, pytest supplies the test lifecycle and fixture system; Playwright supplies the browser automation APIs.
+5. How does Playwright handle asynchronous operations? Give an example.
+Playwright offers synchronous and asynchronous Python APIs. In the asynchronous API, operations are awaited using async and await.
+Example:
+Install the async test dependency if required:
+Why is await important? Browser operations such as navigation and clicks are asynchronous in this API. Awaiting them ensures the operation is completed before the test moves to the next dependent step.
+Important distinction: Playwright's synchronous Python API handles the underlying asynchronous communication for you, so you do not write await when using playwright.sync_api.
+6. What are the best methods for debugging tests in Playwright?
+I use several complementary techniques:
+1. Trace Viewer: Review action history, DOM snapshots, network events, and screenshots.
+2. Screenshots: Capture the page at the point of failure.
+3. Video: Review the interaction sequence.
+4. Logs: Record important business steps and identifiers.
+5. Browser Inspector: Inspect locators and step through interactions.
+6. Console and network listeners: Identify JavaScript exceptions and failed requests.
+7. Targeted reproduction: Run the failed test alone, then with the original parallel settings.
+For Python, run:
+To enable tracing, screenshots, and video using the Playwright pytest plugin:
+Interview point: A trace is especially useful for intermittent failures because it can show what happened before the test failed, rather than only showing the final page state.
+7. What are the best practices for writing efficient and maintainable Playwright tests?
+- Use the Page Object Model or another consistent abstraction for complex workflows.
+- Prefer semantic locators and stable test IDs.
+- Keep tests focused on clear business behaviors.
+- Use independent, deterministic test data.
+- Reuse authentication where safe.
+- Avoid arbitrary sleeps.
+- Keep assertions meaningful and close to the behavior they validate.
+- Separate test data, configuration, and secrets from test logic.
+- Use mocks selectively and retain real integration coverage.
+- Collect diagnostics on failure.
+- Run tests in CI and track flaky-test trends.
+- Review tests when application behavior or business requirements change.
+Example: Instead of placing the entire flight-search and booking workflow in every test, create reusable page objects for search and passenger details, while keeping each test responsible for its own expected outcome.
+8. What are some best practices for using locators effectively?
+My preferred order is:
+1. get_by_role() for buttons, links, headings, and other accessible elements.
+2. get_by_label() for form fields.
+3. get_by_placeholder() when the placeholder is a meaningful identifier.
+4. get_by_test_id() for stable application-provided test identifiers.
+5. locator() for CSS or XPath when other options are unsuitable.
+6. filter() to narrow a group by meaningful content or a related element.
+Example:
+I would also check that a supposedly unique locator matches one element, particularly when dealing with duplicate text or dynamic lists.
+Avoid using .first or .nth() as a quick fix for an ambiguous locator unless element ordering is an intentional part of the test.
+9. What common errors might you encounter with Playwright, and how do you troubleshoot them?
+Error or symptom	Likely cause	Troubleshooting
+Timeout	Element or expected condition never became ready	Inspect locator, page state, and trace
+Strict-mode violation	Locator matches multiple elements	Scope it or make it more specific
+Element not visible	Hidden element or wrong page state	Verify visibility and current UI
+Element not stable/actionable	Animation, overlay, or layout changes	Wait for the proper state and inspect overlays
+Browser executable missing	Browser binaries not installed	Run playwright install
+Navigation timeout	Slow or blocked navigation	Inspect network and choose the appropriate lifecycle condition
+Connection refused	Test application or API is unavailable	Check environment health and endpoint
+Flaky parallel tests	Shared state or test data	Isolate sessions and records
+Import or fixture errors	Missing dependency or incorrect pytest setup	Check virtual environment and installed packages
+Senior-level response: I classify failures into test-code defects, application defects, environment failures, and data or synchronization problems. Then I use logs and trace evidence to determine the root cause.
+10. What are headed and headless modes in Playwright?
+Headed mode: Launches the browser with a visible user interface. It is useful for observing interactions and debugging.
+Headless mode: Runs without displaying the browser interface. It is commonly used in CI/CD for automated execution.
+Both modes can execute browser automation. Headless mode is generally more convenient for pipelines, while headed mode can help reproduce layout, timing, or interaction issues.
+Interview point: Headless does not automatically mean faster or more reliable in every environment; performance depends on the browser version, operating system, and workload.
+11. What measures does Playwright take to guarantee cross-browser compatibility?
+Playwright does not guarantee that every website behaves identically across all browsers. Instead, it makes cross-browser testing practical by providing a consistent automation API across Chromium, Firefox, and WebKit.
+I would:
+- Run critical workflows across supported browser engines.
+- Use semantic locators rather than browser-specific DOM assumptions.
+- Validate browser-specific rendering and behavior.
+- Keep browser versions consistent across local and CI environments.
+- Capture screenshots and traces for browser-specific failures.
+- Use responsive and accessibility checks where appropriate.
+Real-world example: An airline's date picker works in Chromium but behaves differently in WebKit. I would reproduce the issue in WebKit, inspect the relevant DOM and event behavior, and fix the application or adjust the test only if the difference is intentional.
+12. How does Playwright integrate with CI tools?
+Playwright can run in common CI/CD systems such as GitHub Actions, Jenkins, Azure DevOps, and GitLab CI.
+A typical pipeline is:
+1. Check out the repository.
+2. Set up the required language runtime.
+3. Install dependencies.
+4. Install browser binaries and operating-system dependencies.
+5. Run smoke or regression tests.
+6. Publish reports and diagnostic artifacts.
+7. Fail the pipeline when required quality gates are not met.
+Example shell steps for a Python pipeline:
+The exact commands depend on how the project and pytest fixtures are configured.
+For a mature framework, I would also separate smoke tests from full regression and use secure CI variables for credentials.
+13. Does Playwright include built-in reporting?
+Answer: Yes, in the official JavaScript/TypeScript test runner, Playwright includes built-in reporters such as HTML, list, line, JSON, JUnit, and others.
+In Python, reporting is managed through pytest and its plugins. For example:
+For an HTML report:
+The JUnit XML format is useful for CI test-result integration. HTML reports are useful for human-readable analysis, while traces and screenshots provide additional diagnostic evidence.
+14. What are timeouts in Playwright?
+A timeout is the maximum allowed time for a particular operation or condition before Playwright raises a timeout error.
+Timeouts protect a test from waiting indefinitely when an expected event or state does not occur.
+For example:
+This sets the navigation timeout to 15 seconds for that call.
+For a locator assertion:
+This gives the assertion up to 10 seconds to succeed.
+Best practice: Set reasonable timeouts based on observed application behavior. Increasing every timeout can hide slow responses and make failures more expensive to diagnose.
+15. What are the different types of timeouts available in Playwright?
+Important timeout categories include:
+Timeout	Purpose
+Test timeout	Maximum duration of a test
+Expect/assertion timeout	Maximum wait for an assertion to pass
+Action timeout	Maximum duration allowed for an action
+Navigation timeout	Maximum wait for navigation to complete
+Fixture or setup timeout	Limits setup work where supported by the test runner
+Global timeout	Limits the overall test run in supported runners
+In Python, these are configured across Playwright and pytest rather than through a single Playwright configuration file.
+Example pytest configuration:
+This particular setting requires a compatible pytest timeout plugin. It is not a built-in pytest setting.
+For Playwright Python, you can set action and navigation defaults on the page:
+For web-first assertions, configure the assertion timeout where supported by the installed Playwright Python version or pass timeout to individual assertions.
+Interview distinction: Navigation timeout and assertion timeout are different. A page can finish navigation successfully while the application is still rendering the data that the test expects.
+16. How do you navigate forward and backward in Playwright?
+Use go_back() and go_forward().
+These operations depend on the browser's navigation history. If no matching history entry exists, the navigation may return None.
+I would verify the resulting URL or page state instead of assuming that the browser successfully navigated.
+17. How do you perform actions using Playwright?
+Playwright supports common user interactions through locator methods.
+For most actions, I prefer locator APIs because they support actionability checks and auto-waiting.
+18. Does Playwright support Safari browser?
+Answer: Playwright supports WebKit, the browser engine used by Safari. It does not automate the installed Safari browser through the same mechanism as Safari's native WebDriver integration.
+This distinction matters because WebKit-based Playwright testing is not identical to testing every version of Apple's Safari on real macOS or iOS devices.
+For Safari-specific production compatibility, I would combine Playwright WebKit tests with additional real Safari testing where the application requires it.
+19. How do you execute Playwright tests on Safari browser?
+Strictly speaking, you execute tests against WebKit, rather than launching the installed Safari browser.
+For Python:
+If your pytest fixture is parameterized across Chromium, Firefox, and WebKit, the tests can run against WebKit as one of the configured engines.
+Example:
+Interview point: WebKit coverage helps identify engine-specific issues, but it should not be described as a complete substitute for testing Safari on actual Apple platforms.
+20. Can you use Playwright to scrape dynamic websites?
+Answer: Yes. Playwright can interact with JavaScript-rendered pages and extract visible text, attributes, links, and other DOM data after the required content has loaded.
+Example:
+For a page containing a list of results:
+Important considerations:
+- Wait for the relevant content, not an arbitrary sleep.
+- Prefer an official API when it is available and appropriate.
+- Respect the website's terms, access controls, rate limits, and applicable laws.
+- Avoid collecting personal or restricted information without authorization.
+- Handle pagination, lazy loading, and dynamic updates carefully.
+Real-world example: I could use Playwright to extract flight information from an authorized test environment to validate that the UI displays the same flight numbers and prices returned by the API.
+
+Final revision strategy
+Interview preparation checklist
+[ ] Fundamentals
+Advantages, disadvantages, languages, architecture, Selenium comparison, setup, and configuration.
+
+
+[ ] Locators and assertions
+Role-based locators, text matching, XPath, hard versus soft assertions, and Page methods.
+
+
+[ ] Test execution
+Browser contexts, parallel workers, reporters, headed/headless execution, and CI/CD.
+
+
+[ ] Advanced troubleshooting
+Timeouts, synchronization, trace debugging, browser compatibility, and flaky tests.
+
+
+[ ] Practical coding
+Login, navigation, file upload/download, API mocking, event listeners, and dynamic-page extraction.
+
+
+0 of 5 areas reviewed
+
+Official reference: Playwright documentation.
+For a senior SDET interview, prioritize being able to explain the trade-off, write a working code example, and describe how you would debug the failure in CI. Those three skills are more valuable than memorizing definitions word for word.
+-offsetofassistant}}
+1. Reverse string
+2. Palindrome
+3. Prime
+4. Fibonacci
+5. Factorial
+6. Armstrong number
+7. Swap numbers
+8. Largest number
+9. Second largest
+10. Reverse array
+Medium
+11. Duplicate characters
+12. First non-repeated character
+13. Count words
+14. Anagram
+15. Remove duplicates from array
+16. Sort array
+17. Binary search
+18. Linear search
+19. Find missing number
+20. Find duplicates in array
+Selenium/Playwright logic
+21. Find broken links
+22. Wait for element
+23. Handle dropdown
+24. Handle multiple windows
+25. Handle alerts
+26. Screenshot on failure
+27. Retry failed test
+28. Read data from JSON
+29. API response validation
+30. Parallel execution
+I can provide all 30 Java programs with detailed explanations and real-world interview examples, organized into Easy, Medium, and Automation sections.
+You can start with the first 10 above and work through each section in order.
+Please continue from 26 onward and include complete answers.
+Need answer likely they ask continue question list from previous, 26 onward? Previous list basic questions numbering 2-25 and advanced 1-20, so "Please continue from 26 onward and include complete answers" could refer to list of interview questions? But assistant weird appended coding list and says first 10 java programs. Their "continue from 26 onward" likely refers to coding questions numbered 26 onward, but list only up to 30 and says all 30 Java programs. Need interpret: continue from 26 onward include complete answers, likely Selenium/Playwright logic questions 26-30 with Java programs. We should give Java code for screenshot on failure, retry failed test, read JSON, API response validation, parallel execution. Need perhaps question 26-30 from coding list. Use Java examples with Selenium/TestNG/Rest Assured. For retry failed test, TestNG IRetryAnalyzer. Screenshot on failure listener. Read JSON Jackson. API validation Rest Assured. Parallel execution TestNG xml. Detailed explanations real-world example per preference. Need writing? not a standalone draft. Code snippets.# Java Interview Coding Questions 26–30: Selenium, TestNG, JSON, API Testing
+Meghu, continuing from Question 26, here are the complete Java solutions, explanations, and real-world interview examples for the final five automation coding questions.
+These examples use Selenium WebDriver, TestNG, Jackson, and Rest Assured where appropriate.
+26. How do you take a screenshot when a Selenium test fails?
+Interview answer: I use Selenium's TakesScreenshot interface to capture the browser state. In a TestNG framework, I implement ITestListener and take the screenshot in onTestFailure(), so screenshots are captured automatically without adding screenshot code to every test.
+Complete Java program
+Important: This is a teaching example. In a real framework, use @BeforeMethod to initialize the driver and @AfterMethod(alwaysRun = true) to quit it. Ensure teardown does not close the browser before the listener captures the screenshot.
+How it works
+1. TestNG executes the test.
+2. If an assertion or other test operation fails, TestNG invokes onTestFailure().
+3. The listener obtains the test's WebDriver.
+4. getScreenshotAs(OutputType.FILE) captures the browser screen.
+5. The file is copied to the screenshots directory.
+Real-world example: During airline check-in, the passenger-details page fails because the Continue button is not enabled. The screenshot helps the team identify the state of the form at the exact failure point.
+Interview follow-up: In a parallel test suite, I would associate each WebDriver with its own test execution, using thread-local driver management or isolated test instances to avoid capturing another test's browser.
+
+27. How do you retry a failed test in TestNG?
+Interview answer: I use TestNG's IRetryAnalyzer interface to retry failed tests a limited number of times. I configure the retry policy centrally so that the framework can handle transient failures without duplicating retry logic in every test.
+Complete Java program
+The sample assertion deliberately creates a condition that may pass or fail depending on the clock; it is for demonstrating retry behavior, not for production testing.
+How it works
+- First execution fails.
+- TestNG calls retry().
+- Returning true requests another attempt.
+- With MAX_RETRIES = 2, TestNG permits up to two retries after the initial attempt.
+- When the retry limit is reached, the test is reported as failed.
+Why not retry forever?
+Unlimited retries can hide real application defects and consume CI resources. A retry policy should be bounded and failures should remain visible in reporting.
+Real-world example: A flight-search test occasionally encounters a transient test-environment gateway error. A limited retry may help confirm whether the failure is intermittent, but I would still investigate the gateway issue rather than declaring the test stable simply because a retry passed.
+Senior-level point: Retry only when the test is safe to rerun. A payment or booking-creation operation may have side effects, so it needs idempotency protection or cleanup before retrying.
+
+28. How do you read test data from a JSON file in Java?
+Interview answer: I use Jackson or Gson to deserialize JSON into Java objects. This keeps test data separate from test logic and makes it easier to maintain data-driven tests.
+Step 1: Create a JSON file
+Save this as src/test/resources/loginData.json.
+Step 2: Add the Jackson dependency
+If you use Maven, add this dependency to pom.xml:
